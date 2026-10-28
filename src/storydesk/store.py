@@ -48,6 +48,7 @@ class Store:
                     number REAL, query TEXT, chart TEXT, status TEXT NOT NULL DEFAULT 'pending',
                     sensitivity TEXT, audience TEXT NOT NULL DEFAULT '[]', prompted_by TEXT,
                     drop_reason TEXT, novelty REAL, audience_fit REAL, direction REAL, headline TEXT,
+                    followups TEXT NOT NULL DEFAULT '[]',
                     created_at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS evidence (
@@ -87,6 +88,7 @@ class Store:
             )
             self._add_column_if_missing(con, "runs", "summary", "TEXT")
             self._add_column_if_missing(con, "findings", "headline", "TEXT")
+            self._add_column_if_missing(con, "findings", "followups", "TEXT NOT NULL DEFAULT '[]'")
 
     @staticmethod
     def _add_column_if_missing(con: sqlite3.Connection, table: str, name: str, definition: str) -> None:
@@ -126,6 +128,14 @@ class Store:
         with self._con() as con:
             con.execute("UPDATE runs SET summary = ? WHERE id = ?", (text, run_id))
 
+    def update_run_ledger(self, run_id: int, *, cost_usd: float, model_usage: Any) -> None:
+        """Update accounting without changing a completed run's outcome or timestamps."""
+        with self._con() as con:
+            con.execute(
+                "UPDATE runs SET cost_usd = ?, model_usage = ? WHERE id = ?",
+                (cost_usd, _json(model_usage or {}), run_id),
+            )
+
     def add_finding(self, **fields: Any) -> int:
         names = [
             "run_id", "parent_id", "agent", "source_type", "claim", "kind", "number", "query", "chart",
@@ -149,6 +159,11 @@ class Store:
         result = dict(row)
         result["chart"] = json.loads(result["chart"]) if result.get("chart") else None
         result["audience"] = json.loads(result.get("audience") or "[]")
+        try:
+            followups = json.loads(result.get("followups") or "[]")
+        except json.JSONDecodeError:
+            followups = []
+        result["followups"] = followups if isinstance(followups, list) else []
         return result
 
     def findings(self, run_id: int, include_dropped: bool = False) -> list[dict[str, Any]]:
@@ -184,6 +199,11 @@ class Store:
     def set_headline(self, finding_id: int, text: str | None) -> None:
         with self._con() as con:
             con.execute("UPDATE findings SET headline = ? WHERE id = ?", (text, finding_id))
+
+    def set_followups(self, finding_id: int, items: list[dict[str, Any]]) -> None:
+        """Replace the judge-suggested next questions for one finding."""
+        with self._con() as con:
+            con.execute("UPDATE findings SET followups = ? WHERE id = ?", (_json(items), finding_id))
 
     def add_evidence(self, finding_id: int, evidence: Iterable[dict[str, Any]]) -> None:
         rows = [

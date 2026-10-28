@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import re
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from .store import Store
+
+
+FOLLOWUP_TYPES = frozenset({"rarity", "on_pace", "comparison", "context"})
 
 
 def _words(text: str) -> set[str]:
@@ -21,6 +27,26 @@ def _judge_headline(value: Any) -> str | None:
     if not value or "<" in value or ">" in value or len(value) > 120 or len(value.split()) > 14:
         return None
     return value
+
+
+def _judge_followups(value: Any) -> list[dict[str, str]]:
+    """Keep only the small, typed follow-up contract the site can safely present."""
+    if not isinstance(value, list):
+        return []
+    output: list[dict[str, str]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        kind, question, why = item.get("type"), item.get("question"), item.get("why")
+        if kind not in FOLLOWUP_TYPES or not isinstance(question, str) or not isinstance(why, str):
+            continue
+        question, why = question.strip(), why.strip()
+        if not question or not why:
+            continue
+        output.append({"type": kind, "question": question, "why": why})
+        if len(output) == 3:
+            break
+    return output
 
 
 def novelty_similarity(claim: str, coverage_texts: list[str]) -> float:
@@ -59,5 +85,74 @@ def score_findings(
         store.update_finding(finding["id"], novelty=novelty, audience_fit=audience_fit, direction=direction)
         if not finding.get("headline") and (headline := _judge_headline(raw.get("headline"))):
             store.set_headline(finding["id"], headline)
+        store.set_followups(finding["id"], _judge_followups(raw.get("followups")))
         output.append(store.get_finding(finding["id"]))
+    return output
+
+
+def _rejudge_result(value: Any) -> tuple[dict[Any, Any], float, dict[str, Any]]:
+    """Accept the live scorer contract while keeping fixture scorers lightweight."""
+    if isinstance(value, tuple) and len(value) in {2, 3}:
+        scores, cost = value[:2]
+        usage = value[2] if len(value) == 3 else {"calls": 1}
+    else:
+        scores, cost, usage = value, 0.0, {"calls": 1}
+    try:
+        cost = float(cost or 0.0)
+    except (TypeError, ValueError):
+        cost = 0.0
+    return (
+        scores if isinstance(scores, dict) else {},
+        cost,
+        usage if isinstance(usage, dict) else {"calls": 1},
+    )
+
+
+def _live_rejudge_scorer(findings: list[dict[str, Any]], coverage_texts: list[str]) -> Any:
+    """Lazy import keeps the ordinary runner-to-judge dependency one-way."""
+    from .runner import _default_judge_scorer
+
+    return asyncio.run(_default_judge_scorer(findings, coverage_texts))
+
+
+def rejudge(
+    store: Store, run_id: int, *, stats_db: str | Path, corpus_dir: str | Path,
+    scorer: Callable[[list[dict[str, Any]], list[str]], Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Run one fresh judge pass for a finished run without re-running its agents."""
+    run = store.get_run(run_id)
+    if not run.get("finished_at"):
+        raise ValueError(f"run {run_id} has not finished")
+
+    # Reuse the cutoff-safe coverage collection used by the original run.  It is
+    # imported here to avoid a module cycle with runner's score_findings import.
+    from .runner import _coverage_texts
+    from .tools import ToolContext
+
+    ctx = ToolContext(
+        stats_db=stats_db, store=store, corpus_dir=corpus_dir, run_id=run_id, as_of=run["as_of"],
+    )
+    coverage_texts = _coverage_texts(ctx, run["game_id"])
+    findings = [finding for finding in store.findings(run_id) if finding["kind"] != "nothing_found"]
+    if not findings:
+        return []
+
+    response = (scorer or _live_rejudge_scorer)(findings, coverage_texts)
+    if inspect.isawaitable(response):
+        response = asyncio.run(response)
+    scores, cost, usage = _rejudge_result(response)
+    output = score_findings(store, run_id, coverage_texts, lambda _findings, _coverage: scores)
+
+    model_usage = dict(run.get("model_usage") or {})
+    previous = model_usage.get("rejudge")
+    if previous is None:
+        model_usage["rejudge"] = usage
+    elif isinstance(previous, list):
+        model_usage["rejudge"] = [*previous, usage]
+    else:
+        model_usage["rejudge"] = [previous, usage]
+    store.update_run_ledger(
+        run_id, cost_usd=float(run.get("cost_usd") or 0.0) + cost,
+        model_usage=model_usage,
+    )
     return output

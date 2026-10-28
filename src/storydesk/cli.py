@@ -10,7 +10,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .data import build_stats_db, raw_connection
-from .runner import rejudge_live, run_live
+from .judge import rejudge
+from .runner import run_live
 from .scorecard import scorecard
 from .site import build_site
 from .store import Store
@@ -108,7 +109,7 @@ def _rejudge(args: argparse.Namespace) -> int:
         raise SystemExit("Refusing to re-run the judge without --live")
     store = Store(args.store)
     store.init()
-    asyncio.run(rejudge_live(store, args.run_id, stats_db=args.stats_db, corpus_dir=args.corpus))
+    rejudge(store, args.run_id, stats_db=args.stats_db, corpus_dir=args.corpus)
     print(args.run_id)
     return 0
 

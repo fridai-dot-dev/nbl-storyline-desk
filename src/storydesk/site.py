@@ -23,7 +23,7 @@ CSS = """
 main { max-width:960px; margin:auto; padding:2.4rem 1.25rem 4rem } a { color:var(--accent) } .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:1rem 1.1rem; margin:.9rem 0; }
 h1 { line-height:1.15 } h2 { margin-top:1.8rem } .muted { color:var(--muted) } .pill { display:inline-block; border:1px solid var(--line); border-radius:99px; padding:.08rem .5rem; font-size:.78rem; margin:.1rem .2rem .1rem 0; }
 .held { color:var(--held); border-color:var(--held) } .buttons button { border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:6px; padding:.32rem .55rem; margin:.15rem .25rem .1rem 0; }
-blockquote { border-left:3px solid var(--accent); margin:.75rem 0; padding:.3rem .75rem; background:color-mix(in srgb, var(--card) 85%, var(--accent)); } details pre { white-space:pre-wrap; overflow:auto; } table { border-collapse:collapse; width:100% } td,th { text-align:left; padding:.4rem; border-bottom:1px solid var(--line) }
+blockquote { border-left:3px solid var(--accent); margin:.75rem 0; padding:.3rem .75rem; background:color-mix(in srgb, var(--card) 85%, var(--accent)); } pre { white-space:pre-wrap; overflow:auto; } table { border-collapse:collapse; width:100% } td,th { text-align:left; padding:.4rem; border-bottom:1px solid var(--line) }
 """
 
 
@@ -161,6 +161,87 @@ def _finding_card(finding: dict[str, Any], href: str) -> str:
     )
 
 
+_FOLLOWUP_LABELS = {
+    "rarity": "Rarity",
+    "on_pace": "On pace",
+    "comparison": "Comparison",
+    "context": "Context",
+}
+
+
+def _followups(finding: dict[str, Any]) -> list[dict[str, str]]:
+    """Defend the static site against malformed legacy ledger values."""
+    items = finding.get("followups")
+    if not isinstance(items, list):
+        return []
+    output: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        kind, question, why = item.get("type"), item.get("question"), item.get("why")
+        if kind not in _FOLLOWUP_LABELS or not isinstance(question, str) or not isinstance(why, str):
+            continue
+        if question.strip() and why.strip():
+            output.append({"type": kind, "question": question.strip(), "why": why.strip()})
+    return output
+
+
+def _shell_quote_question(question: str) -> str:
+    """Quote a generated question safely for the displayed POSIX-shell command."""
+    escaped = question.replace("\\", "\\\\").replace('"', '\\"')
+    escaped = escaped.replace("$", "\\$").replace("`", "\\`").replace("\n", " ")
+    return f'"{escaped}"'
+
+
+def _followups_html(finding: dict[str, Any], game_id: str) -> str:
+    items = _followups(finding)
+    if not items:
+        return "<p class=\"muted\">No suggested follow-ups yet.</p>"
+    cards = []
+    for item in items:
+        projection = '<span class="pill projection">Projection</span>' if item["type"] == "on_pace" else ""
+        command = (
+            f"python -m storydesk run follow_up --game {game_id} --anchor {finding['id']} "
+            f"--question {_shell_quote_question(item['question'])} --live"
+        )
+        cards.append(
+            f'<article class="card"><p><span class="pill">{escape(_FOLLOWUP_LABELS[item["type"]])}</span>{projection}</p>'
+            f"<strong>{escape(item['question'], quote=False)}</strong><p class=\"muted\">{escape(item['why'], quote=False)}</p>"
+            f"<pre><code>{escape(command, quote=False)}</code></pre></article>"
+        )
+    return "".join(cards)
+
+
+def _judge_score(finding: dict[str, Any]) -> float:
+    values = []
+    for field in ("novelty", "audience_fit", "direction"):
+        try:
+            values.append(float(finding[field]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return sum(values) / len(values) if values else 0.0
+
+
+def _leadership_followups_html(findings: list[dict[str, Any]]) -> str:
+    candidates = [
+        (_judge_score(finding), finding["id"], position, finding, item)
+        for finding in findings
+        for position, item in enumerate(_followups(finding))
+    ]
+    if not candidates:
+        return "<p class=\"muted\">No suggested follow-ups yet.</p>"
+    candidates.sort(key=lambda item: (-item[0], item[1], item[2]))
+    cards = []
+    for _score, finding_id, _position, finding, item in candidates[:3]:
+        projection = ' <span class="pill projection">Projection</span>' if item["type"] == "on_pace" else ""
+        cards.append(
+            f'<article class="card suggested-followup"><p><span class="pill">{escape(_FOLLOWUP_LABELS[item["type"]])}</span>{projection} '
+            f'<a href="../findings/{finding_id}.html">{escape(headline_for(finding), quote=False)}</a></p>'
+            f"<strong>{escape(item['question'], quote=False)}</strong><p class=\"muted\">{escape(item['why'], quote=False)}</p></article>"
+        )
+    return "".join(cards)
+
+
 def _finding_page(
     store: Store, stats_db: str | Path, finding: dict[str, Any], pages: set[int], published_run_ids: set[int],
 ) -> str:
@@ -194,13 +275,14 @@ def _finding_page(
         + (f"<br>Answered in run {request['answered_run_id']}." if request["answered_run_id"] else "") + "</div>"
         for request in requests
     ) or "<p class=\"muted\">No follow-up requests yet.</p>"
+    suggested_html = _followups_html(finding, run["game_id"])
     return (
         f"<p><a href=\"../index.html\">Storyline Desk</a> · Finding {finding['id']}</p><h1>{escape(headline_for(finding), quote=False)}</h1>"
         f"<p>{escape(finding['claim'], quote=False)}</p><p>{_status_badge(finding)}"
         + " ".join(f"<span class=\"pill\">{escape(tag)}</span>" for tag in finding["audience"]) + "</p>"
         f"<section class=\"card\">{chart or '<p class=\"muted\">No chart was released for this finding.</p>'}{query_html}</section>"
         f"<h2>How the agents got here</h2>{trail_html}<h2>Evidence</h2>{evidence_html}"
-        f"<h2>Follow-up requests</h2>{requests_html}"
+        f"<h2>Suggested follow-ups</h2>{suggested_html}<h2>Follow-up requests</h2>{requests_html}"
     )
 
 
@@ -254,6 +336,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
         directives = store.directives()
         minutes = int(round((post.get("duration_s") or 0) / 60))
         feedback = [item for item in store.feedback() if item["finding_id"] in pages]
+        suggested_followups = _leadership_followups_html(findings)
         email = (
             "<p><a href=\"../index.html\">Storyline Desk</a></p><h1>Post-game leadership briefing</h1>"
             f"<section class=\"card\"><h2>{score}</h2><p>Briefing ready {minutes} min after full time · {_cost_label(post)}</p></section>"
@@ -262,6 +345,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
             "<h2>What moved since pre-game</h2>" + ("".join(_finding_card(item, f"../findings/{item['id']}.html") for item in moved) or "<p class=\"muted\">No linked pre-game movement recorded.</p>")
             + "<h2>In-game pulse</h2>" + ("".join(_finding_card(item, f"../findings/{item['id']}.html") for item in pulse) or "<p class=\"muted\">No in-game pulse finding.</p>")
             + "<h2>Angles for the next 48 hours</h2>" + "".join(_finding_card(item, f"../findings/{item['id']}.html") for item in post_findings)
+            + "<h2>Suggested follow-ups</h2>" + suggested_followups
             + addendum
             + "<h2>Directives</h2>" + ("".join(f"<div class=\"card\">{escape(item['text'])}</div>" for item in directives) or "<p class=\"muted\">No active directives.</p>")
             + "<p class=\"muted\">Feedback shown here is simulated.</p>" + "".join(
@@ -269,7 +353,11 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
             )
         )
     else:
-        email = "<p><a href=\"../index.html\">Storyline Desk</a></p><h1>Post-game leadership briefing</h1><p class=\"muted\">No post-game run yet.</p>" + addendum
+        email = (
+            "<p><a href=\"../index.html\">Storyline Desk</a></p><h1>Post-game leadership briefing</h1>"
+            "<p class=\"muted\">No post-game run yet.</p><h2>Suggested follow-ups</h2>"
+            + _leadership_followups_html(findings) + addendum
+        )
     output.append(_write(out / "outbox" / "post-game-email.html", "Post-game leadership briefing", email))
 
     links = "".join(f"<li><a href=\"findings/{finding['id']}.html\">{escape(headline_for(finding), quote=False)}</a></li>" for finding in findings)

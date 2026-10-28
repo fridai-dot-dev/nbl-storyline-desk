@@ -22,7 +22,7 @@ from claude_agent_sdk import (
 
 from .agents import RUN_TYPES, build_options, build_prompt
 from .gates import apply_gates, coverage
-from .judge import score_findings
+from .judge import rejudge, score_findings
 from .prepare import prepare_run
 from .store import Store
 from .tool_log import tool_log_path
@@ -177,18 +177,9 @@ async def _default_judge_scorer(
 
 async def rejudge_live(store: Store, run_id: int, *, stats_db: str | Path, corpus_dir: str | Path) -> list[dict[str, Any]]:
     """Run the independent judge again for one finished run after an explicit live opt-in."""
-    run = store.get_run(run_id)
-    if not run.get("finished_at"):
-        raise ValueError(f"run {run_id} has not finished")
-    ctx = ToolContext(
-        stats_db=stats_db, store=store, corpus_dir=corpus_dir, run_id=run_id, as_of=run["as_of"],
+    return await asyncio.to_thread(
+        rejudge, store, run_id, stats_db=stats_db, corpus_dir=corpus_dir,
     )
-    findings = [finding for finding in store.findings(run_id) if finding["kind"] != "nothing_found"]
-    if not findings:
-        return []
-    coverage_texts = _coverage_texts(ctx, run["game_id"])
-    scores, _cost, _usage = await _default_judge_scorer(findings, coverage_texts)
-    return score_findings(store, run_id, coverage_texts, lambda _findings, _coverage: scores)
 
 
 async def _call_judge(

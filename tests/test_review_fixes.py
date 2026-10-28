@@ -277,5 +277,5 @@ def test_default_cutoffs(stats_db):
     from storydesk.cli import default_as_of
 
     assert default_as_of("pre_game", stats_db=stats_db, game_id=OPENER) == "2026-09-19T06:30:00+00:00"
-    assert default_as_of("post_game", stats_db=stats_db, game_id=OPENER) == "2026-09-19T11:35:07+00:00"
+    assert default_as_of("post_game", stats_db=stats_db, game_id=OPENER) == "2026-09-19T11:26:37+00:00"
     assert PRE == "2026-09-19T06:30:00+00:00"

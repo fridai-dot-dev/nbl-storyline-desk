@@ -14,7 +14,7 @@ CORPUS = FIX / "corpus"
 
 OPENER = "36dbeb55-58ad-11f1-a69b-43a6b5595d3e"  # NBL27 R1: Melbourne United 95-97 Adelaide 36ers
 PRE = "2026-09-19T06:30:00+00:00"   # pre-game cutoff (tip-off 09:30Z)
-POST = "2026-09-19T11:35:07+00:00"  # post-game cutoff: the "game completed" event
+POST = "2026-09-19T11:26:37+00:00"  # post-game cutoff: the final period's End event (the final whistle)
 SUPP = "2026-09-19T12:20:00+00:00"  # supplemental cutoff (pressers done)
 
 Q3_ADL = (
@@ -36,7 +36,7 @@ EV_COMMENTARY = {
 EV_FAN = {
     "source_type": "fans",
     "url": "https://example.test/thread/c2",
-    "ref": "2026-09-19T11:34:00+00:00",
+    "ref": "2026-09-19T11:25:30+00:00",
     "quote": "What a finish, the bench won it for Adelaide",
 }
 

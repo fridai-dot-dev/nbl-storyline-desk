@@ -8,7 +8,15 @@ from typing import Any
 
 from .data import as_of_connection
 from .store import Store
-from .tools import ToolContext, get_game, search_fans, search_media, search_transcripts
+from .tools import (
+    ToolContext,
+    get_game,
+    recent_fans,
+    recent_transcripts,
+    search_fans,
+    search_media,
+    search_transcripts,
+)
 
 
 def _write(path: Path, name: str, title: str, body: str) -> Path:
@@ -58,6 +66,23 @@ def _lineage(store: Store, finding: dict[str, Any]) -> list[dict[str, Any]]:
         seen.add(parent["id"])
         parent_id = parent.get("parent_id")
     return output
+
+
+def _digest_source_tail(
+    matches: list[dict[str, Any]], latest: list[dict[str, Any]], render: Any, text_key: str,
+) -> str:
+    """Keep a focused set of matches while retaining the game-ending context."""
+    def item_key(item: dict[str, Any]) -> tuple[Any, Any, Any]:
+        return item.get("timestamp"), item.get("source_url"), item.get(text_key)
+
+    latest_keys = {item_key(item) for item in latest}
+    relevant = [item for item in matches if item_key(item) not in latest_keys]
+    sections = []
+    if relevant:
+        sections.append("## Relevant matches\n\n" + "\n\n".join(render(item) for item in relevant))
+    if latest:
+        sections.append("## Latest before cutoff\n\n" + "\n\n".join(render(item) for item in latest))
+    return "\n\n".join(sections)
 
 
 def _prior_context(
@@ -153,17 +178,22 @@ def prepare_run(
     _write(out, "history.md", "Head-to-head and quarter history", _rows_markdown(["match", "date", "season", "team", "Q1", "Q2", "Q3", "Q4", "points"], history_rows))
 
     query = f"{game['home_team']} {game['away_team']}"
-    transcripts = search_transcripts(context, query, limit=30)
-    transcript_body = "\n\n".join(
-        f"- {item['timestamp']} — {item.get('source_title') or item.get('source_type')}: {item['quote']} ({item['source_url']})"
-        for item in transcripts
-    ) or "No matching transcript material before the cutoff."
+    transcripts = search_transcripts(context, query, limit=12)
+    transcript_body = _digest_source_tail(
+        transcripts,
+        recent_transcripts(context, limit=3),
+        lambda item: f"- {item['timestamp']} — {item.get('source_title') or item.get('source_type')}: {item['quote']} ({item['source_url']})",
+        "quote",
+    ) or "No transcript material before the cutoff."
     _write(out, "commentary.md", "Commentary and transcripts", transcript_body)
 
-    fans = search_fans(context, "third quarter bench finish defence", limit=30)
-    fan_body = "\n\n".join(
-        f"- {item['timestamp']} · score {item.get('score')}: {item['text']} ({item['source_url']})" for item in fans
-    ) or "No matching fan material before the cutoff."
+    fans = search_fans(context, "third quarter bench finish defence", limit=12)
+    fan_body = _digest_source_tail(
+        fans,
+        recent_fans(context, limit=3),
+        lambda item: f"- {item['timestamp']} · score {item.get('score')}: {item['text']} ({item['source_url']})",
+        "text",
+    ) or "No fan reaction before the cutoff."
     _write(out, "fans.md", "Fan reaction", fan_body)
 
     media = search_media(context, query, limit=30)

@@ -10,7 +10,15 @@ import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient, ResultMessage
+from claude_agent_sdk import (
+    TERMINAL_TASK_STATUSES,
+    ClaudeAgentOptions,
+    ClaudeSDKClient,
+    ResultMessage,
+    TaskNotificationMessage,
+    TaskStartedMessage,
+    TaskUpdatedMessage,
+)
 
 from .agents import RUN_TYPES, build_options, build_prompt
 from .gates import apply_gates, coverage
@@ -74,10 +82,24 @@ def _is_result(message: Any) -> bool:
 
 
 async def _receive_result(client: Any) -> Any | None:
+    """Wait for a lead result that is not ahead of its background specialists."""
+    receive = getattr(client, "receive_messages", None) or client.receive_response
+    pending_tasks: set[str] = set()
     result = None
-    async for message in client.receive_response():
-        if _is_result(message):
+    async for message in receive():
+        if isinstance(message, TaskStartedMessage) and message.task_type == "local_agent":
+            pending_tasks.add(message.task_id)
+        elif isinstance(message, TaskNotificationMessage):
+            if message.status in TERMINAL_TASK_STATUSES:
+                pending_tasks.discard(message.task_id)
+        elif isinstance(message, TaskUpdatedMessage):
+            task_status = message.patch.get("status", message.status)
+            if task_status in TERMINAL_TASK_STATUSES:
+                pending_tasks.discard(message.task_id)
+        elif _is_result(message):
             result = message
+            if not pending_tasks:
+                return result
     return result
 
 
@@ -92,7 +114,9 @@ async def _query_with_deadline(client: Any, prompt: str, seconds: float) -> tupl
         await client.interrupt()
         drained = None
         with contextlib.suppress(asyncio.TimeoutError, asyncio.CancelledError, Exception):
-            drained = await asyncio.wait_for(_receive_result(client), timeout=30.0)
+            # Interrupt normally places the terminal result straight onto the stream.
+            # Do not let a stalled drain turn a wall-clock timeout into another wait.
+            drained = await asyncio.wait_for(_receive_result(client), timeout=0.25)
         return "timeout", drained
 
 
@@ -196,11 +220,9 @@ async def run_live(
         nonlocal agent_cost, model_usage
         if result is None:
             return False
-        cost = float(getattr(result, "total_cost_usd", 0.0) or 0.0)
-        agent_cost = max(agent_cost, cost)  # SDK ResultMessage cost is cumulative for the session.
+        agent_cost = float(getattr(result, "total_cost_usd", 0.0) or 0.0)
         usage = getattr(result, "model_usage", None)
-        if isinstance(usage, dict):
-            model_usage.update(usage)
+        model_usage = dict(usage) if isinstance(usage, dict) else {}
         return not bool(getattr(result, "is_error", False)) and getattr(result, "subtype", "") == "success"
 
     try:
@@ -236,7 +258,7 @@ async def run_live(
                         f"finding or a nothing_found finding for each: {', '.join(missing)}. Do not revisit covered sources."
                     )
                     phase_status, result = await _query_with_deadline(client, top_up, remaining())
-                    capture_result(result)
+                    agent_success = capture_result(result)
                     if phase_status == "timeout":
                         status = "timeout"
                     source_coverage = coverage(store, run_id, required)

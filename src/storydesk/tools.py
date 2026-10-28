@@ -143,11 +143,15 @@ def _tokens(query: str) -> list[str]:
 
 
 def _matches(item: dict[str, Any], query: str) -> bool:
-    tokens = _tokens(query)
+    return _match_score(item, query) > 0
+
+
+def _match_score(item: dict[str, Any], query: str) -> int:
+    tokens = set(_tokens(query))
     if not tokens:
-        return False
+        return 0
     haystack = " ".join(str(value) for value in item.values() if value is not None).lower()
-    return any(token in haystack for token in tokens)
+    return sum(token in haystack for token in tokens)
 
 
 def _jsonl(path: Path):
@@ -165,56 +169,106 @@ def _check_limit(limit: int) -> int:
     return limit
 
 
-def search_transcripts(ctx: ToolContext, query: str, limit: int = 20) -> list[dict[str, Any]]:
-    limit = _check_limit(limit)
+def _time_window(
+    ctx: ToolContext, since: str | None = None, until: str | None = None,
+) -> tuple[datetime | None, datetime]:
     cutoff = _cutoff(ctx.as_of)
-    output = []
-    for item in _jsonl(ctx.corpus_path / "transcripts.jsonl") or ():
-        timestamp = _cutoff(item["timestamp"])
-        if timestamp <= cutoff and _matches(item, query):
-            output.append({
-                "quote": item.get("quote", ""), "timestamp": iso_utc(timestamp),
-                "source_url": item.get("source_url"), "source_type": item.get("source_type"),
-                "source_title": item.get("source_title"),
-            })
-            if len(output) >= limit:
-                break
-    return output
+    lower = _cutoff(since) if since is not None else None
+    upper = min(cutoff, _cutoff(until)) if until is not None else cutoff
+    return lower, upper
 
 
-def search_fans(ctx: ToolContext, query: str, limit: int = 20) -> list[dict[str, Any]]:
-    limit = _check_limit(limit)
-    cutoff = _cutoff(ctx.as_of)
-    output = []
-    for item in _jsonl(ctx.corpus_path / "fans.jsonl") or ():
+def _ranked_timestamped_items(
+    ctx: ToolContext, filename: str, query: str, *, since: str | None = None, until: str | None = None,
+) -> list[tuple[int, datetime, dict[str, Any]]]:
+    lower, upper = _time_window(ctx, since, until)
+    matches: list[tuple[int, datetime, dict[str, Any]]] = []
+    for item in _jsonl(ctx.corpus_path / filename) or ():
         timestamp = _cutoff(item["timestamp"])
-        if timestamp <= cutoff and _matches(item, query):
-            output.append({
-                "text": _HANDLE.sub("", item.get("text", "")).strip(), "score": item.get("score"),
-                "timestamp": iso_utc(timestamp), "source_url": item.get("source_url"),
-            })
-            if len(output) >= limit:
-                break
-    return output
+        score = _match_score(item, query)
+        if (lower is None or lower <= timestamp) and timestamp <= upper and score:
+            matches.append((score, timestamp, item))
+    return sorted(matches, key=lambda item: (item[0], item[1]), reverse=True)
+
+
+def _recent_timestamped_items(ctx: ToolContext, filename: str, limit: int) -> list[tuple[datetime, dict[str, Any]]]:
+    _, cutoff = _time_window(ctx)
+    items = [
+        (timestamp, item)
+        for item in _jsonl(ctx.corpus_path / filename) or ()
+        if (timestamp := _cutoff(item["timestamp"])) <= cutoff
+    ]
+    return sorted(items, key=lambda item: item[0], reverse=True)[:limit]
+
+
+def _transcript_result(item: dict[str, Any], timestamp: datetime) -> dict[str, Any]:
+    return {
+        "quote": item.get("quote", ""), "timestamp": iso_utc(timestamp),
+        "source_url": item.get("source_url"), "source_type": item.get("source_type"),
+        "source_title": item.get("source_title"),
+    }
+
+
+def _fan_result(item: dict[str, Any], timestamp: datetime) -> dict[str, Any]:
+    return {
+        "text": _HANDLE.sub("", item.get("text", "")).strip(), "score": item.get("score"),
+        "timestamp": iso_utc(timestamp), "source_url": item.get("source_url"),
+    }
+
+
+def search_transcripts(
+    ctx: ToolContext, query: str, limit: int = 20, since: str | None = None, until: str | None = None,
+) -> list[dict[str, Any]]:
+    limit = _check_limit(limit)
+    matches = _ranked_timestamped_items(ctx, "transcripts.jsonl", query, since=since, until=until)
+    return [_transcript_result(item, timestamp) for _, timestamp, item in matches[:limit]]
+
+
+def search_fans(
+    ctx: ToolContext, query: str, limit: int = 20, since: str | None = None, until: str | None = None,
+) -> list[dict[str, Any]]:
+    limit = _check_limit(limit)
+    matches = _ranked_timestamped_items(ctx, "fans.jsonl", query, since=since, until=until)
+    return [_fan_result(item, timestamp) for _, timestamp, item in matches[:limit]]
 
 
 def search_media(ctx: ToolContext, query: str, limit: int = 20) -> list[dict[str, Any]]:
     limit = _check_limit(limit)
     cutoff_day = _cutoff(ctx.as_of).date()
-    output = []
+    matches: list[tuple[int, date, dict[str, Any]]] = []
     for item in _jsonl(ctx.corpus_path / "media.jsonl") or ():
         try:
             item_day = date.fromisoformat(item["date"])
         except (KeyError, ValueError):
             continue
-        if item_day < cutoff_day and _matches(item, query):
-            output.append({
-                "title": item.get("title", ""), "date": item["date"], "url": item.get("url"),
-                "excerpt": item.get("excerpt", ""),
-            })
-            if len(output) >= limit:
-                break
-    return output
+        score = _match_score(item, query)
+        if item_day < cutoff_day and score:
+            matches.append((score, item_day, item))
+    return [
+        {
+            "title": item.get("title", ""), "date": item["date"], "url": item.get("url"),
+            "excerpt": item.get("excerpt", ""),
+        }
+        for _, _, item in sorted(matches, key=lambda item: (item[0], item[1]), reverse=True)[:limit]
+    ]
+
+
+def recent_transcripts(ctx: ToolContext, limit: int = 3) -> list[dict[str, Any]]:
+    """Return a compact, newest-first tail of cutoff-safe commentary."""
+    limit = _check_limit(limit)
+    return [
+        _transcript_result(item, timestamp)
+        for timestamp, item in _recent_timestamped_items(ctx, "transcripts.jsonl", limit)
+    ]
+
+
+def recent_fans(ctx: ToolContext, limit: int = 3) -> list[dict[str, Any]]:
+    """Return a compact, newest-first tail of cutoff-safe fan reaction."""
+    limit = _check_limit(limit)
+    return [
+        _fan_result(item, timestamp)
+        for timestamp, item in _recent_timestamped_items(ctx, "fans.jsonl", limit)
+    ]
 
 
 def write_finding(

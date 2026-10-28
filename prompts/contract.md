@@ -6,6 +6,8 @@ Persist work with `write_finding`. Its payload is `agent`, `source_type`, `claim
 
 Evidence always supplies `source_type`, `url`, and `ref`; include `quote` when attribution matters. For statistics, `url` must be the actual data source: the nblr_data release CSV URL for results or box scores, and the NBL match API URL for `pbp`. The `ref` names the exact rows, such as `match_id=…; name=…` for a box row or `match_id=…; action_id=…` for play-by-play. Do not use a generic project URL as statistical evidence.
 
+`search_transcripts` and `search_fans` rank distinct query-token matches first, then newest items. Both accept optional inclusive `since` and `until` ISO timestamps, so use a window such as the last five minutes when investigating the finish. These bounds can narrow the run cutoff but never widen it.
+
 A chart is optional and has `type`, `query`, and `y_label`. Its query must be cutoff-safe and return columns named `label`, `value`, and `highlight`. It must return exactly one highlighted row, and that row's value must equal the finding's `number`.
 
 The dataset begins in 2015-16. Any record, first, last, best, worst, highest, lowest, most, or fewest claim must use the wording “since at least 2015-16”. Mark `conflict`, `injury`, `officiating`, `legal`, and `fan_quote` as sensitivity categories so release gates can hold them for sign-off.

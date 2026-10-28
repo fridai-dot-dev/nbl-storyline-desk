@@ -6,9 +6,10 @@ import json
 import os
 import sys
 from functools import wraps
-from typing import Any, Callable
+from typing import Annotated, Any, Callable
 
 from mcp.server.mcpserver import MCPServer
+from pydantic import Field
 
 from .store import Store
 from .tools import (
@@ -56,14 +57,24 @@ async def mcp_get_game(match_id: str) -> dict[str, Any]:
     return _logged("get_game", get_game)(match_id=match_id)
 
 
-@server.tool(name="search_transcripts", description="Search timestamped commentary and transcript excerpts before the cutoff.")
-async def mcp_search_transcripts(query: str, limit: int = 20) -> list[dict[str, Any]]:
-    return _logged("search_transcripts", search_transcripts)(query=query, limit=limit)
+@server.tool(name="search_transcripts", description="Search timestamped commentary and transcript excerpts before the cutoff; optional time windows can only narrow it.")
+async def mcp_search_transcripts(
+    query: str,
+    limit: int = 20,
+    since: Annotated[str | None, Field(description="Optional inclusive ISO-8601 lower time bound.")] = None,
+    until: Annotated[str | None, Field(description="Optional inclusive ISO-8601 upper time bound; never widens the run cutoff.")] = None,
+) -> list[dict[str, Any]]:
+    return _logged("search_transcripts", search_transcripts)(query=query, limit=limit, since=since, until=until)
 
 
-@server.tool(name="search_fans", description="Search anonymised fan reactions posted before the cutoff.")
-async def mcp_search_fans(query: str, limit: int = 20) -> list[dict[str, Any]]:
-    return _logged("search_fans", search_fans)(query=query, limit=limit)
+@server.tool(name="search_fans", description="Search anonymised fan reactions posted before the cutoff; optional time windows can only narrow it.")
+async def mcp_search_fans(
+    query: str,
+    limit: int = 20,
+    since: Annotated[str | None, Field(description="Optional inclusive ISO-8601 lower time bound.")] = None,
+    until: Annotated[str | None, Field(description="Optional inclusive ISO-8601 upper time bound; never widens the run cutoff.")] = None,
+) -> list[dict[str, Any]]:
+    return _logged("search_fans", search_fans)(query=query, limit=limit, since=since, until=until)
 
 
 @server.tool(name="search_media", description="Search media published before the cutoff date.")

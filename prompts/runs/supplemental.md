@@ -1,0 +1,1 @@
+Produce an addendum, not a repeat briefing. Focus on what is genuinely new since the post-game packet: press-conference moments, fresh fan reaction and useful confirmation or challenge of existing findings. Link every new answer to what it changes, preserve the run cutoff, and make clear whether the material should elevate, qualify or retire the earlier angle.

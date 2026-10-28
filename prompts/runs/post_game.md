@@ -1,0 +1,1 @@
+Explain what happened, what moved against the pre-game brief, and which angles to elevate, put in context, monitor, play down or challenge. Build an email-first leadership briefing with an in-game pulse and a short list of next-48-hour angles. The briefing must finish inside 25 minutes, so prefer a small number of evidence-rich, checked findings over a broad, shallow sweep.

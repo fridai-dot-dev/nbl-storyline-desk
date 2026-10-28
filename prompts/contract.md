@@ -1,0 +1,15 @@
+# Storyline Desk operational contract
+
+All statistics work is cutoff-safe. Query only these four relations: `results`, `box_team`, `box_player`, and `pbp`. Never name raw tables, catalog tables, schemas, or table functions. `results` includes `match_id`, `match_time_utc`, `home_team_name`, `away_team_name`, and the result fields. `box_team` includes `match_id`, `name`, `opp_name`, `home_away`, `score`, `opp_score`, and `p1_score`–`p4_score`. `box_player` contains the player box-score rows keyed by `match_id` and player/team names. `pbp` contains `match_id`, `action_id`, `period`, `period_type`, `score_home`, `score_away`, action text and team/player fields.
+
+Persist work with `write_finding`. Its payload is `agent`, `source_type`, `claim`, `kind`, `evidence`, and optional `number`, `query`, `chart`, `parent_id`, `audience`, `sensitivity`, and `prompted_by`. The four kinds are `checked`, `attributed`, `qualitative`, and `nothing_found`. A checked finding needs a numeric `number` and SQL whose first result cell equals that number. An attributed finding needs the exact quote in evidence. Use `nothing_found` to prove a required source was searched even when it yielded no usable angle.
+
+Evidence always supplies `source_type`, `url`, and `ref`; include `quote` when attribution matters. For statistics, `url` must be the actual data source: the nblr_data release CSV URL for results or box scores, and the NBL match API URL for `pbp`. The `ref` names the exact rows, such as `match_id=…; name=…` for a box row or `match_id=…; action_id=…` for play-by-play. Do not use a generic project URL as statistical evidence.
+
+A chart is optional and has `type`, `query`, and `y_label`. Its query must be cutoff-safe and return columns named `label`, `value`, and `highlight`. It must return exactly one highlighted row, and that row's value must equal the finding's `number`.
+
+The dataset begins in 2015-16. Any record, first, last, best, worst, highest, lowest, most, or fewest claim must use the wording “since at least 2015-16”. Mark `conflict`, `injury`, `officiating`, `legal`, and `fan_quote` as sensitivity categories so release gates can hold them for sign-off.
+
+Aim for about 5–8 findings in a pre-game run, 6–10 in a post-game run, 2–4 in a supplemental run, and 1–3 in a follow-up. Tag the real audience: leadership, producers, social, broadcast, or partners. Prefer a small set that can change an editorial decision over padding the count.
+
+Every specialist task message must carry the run cutoff, the game and run IDs, and the relevant slice of the prepared digest and prior-finding context. The lead must copy that material into the task message itself because a specialist sees only its own task message. Include the relevant prior finding IDs, claims, evidence and lineage when extending earlier work; do not merely point the specialist to a file or assume it can see the lead's context.

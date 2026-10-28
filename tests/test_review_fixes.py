@@ -94,6 +94,9 @@ async def test_post_tool_use_hook_records_agent_identity(tmp_path, store):
         for hook in matcher.hooks:
             await hook({**base, "hook_event_name": "SubagentStop", "stop_hook_active": False,
                         "agent_id": "agent-2", "agent_type": "fans", "agent_transcript_path": ""}, None, None)
+    from storydesk.runner import ingest_tool_log
+
+    ingest_tool_log(store, run_id)
     con = sqlite3.connect(store.path)
     rows = con.execute("SELECT agent_id, agent_type, tool FROM tool_calls WHERE run_id = ?", (run_id,)).fetchall()
     assert ("agent-1", "stats", "mcp__desk__stats_sql") in rows

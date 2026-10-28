@@ -24,7 +24,7 @@ RUN_TYPES: dict[str, dict[str, Any]] = {
     "post_game": {"time_limit_s": 1500, "required_sources": ["stats", "commentary", "fans"]},
     "supplemental": {"time_limit_s": 900, "required_sources": ["commentary", "media", "fans"]},
     "follow_up": {"time_limit_s": 600, "required_sources": ["stats", "commentary", "media", "fans"]},
-    "smoke": {"time_limit_s": 180, "required_sources": ["stats", "commentary", "media", "fans"]},
+    "smoke": {"time_limit_s": 180, "required_sources": []},  # proves tool access; writes no findings
 }
 
 

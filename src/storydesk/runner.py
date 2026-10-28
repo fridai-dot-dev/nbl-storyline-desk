@@ -227,15 +227,16 @@ async def run_live(
             )
             coverage_texts = _coverage_texts(ctx, game_id)
             remaining()
-            findings = store.findings(run_id)
-            scores, judge_cost, judge_usage = await _call_judge(
-                judge_scorer, findings, coverage_texts, remaining(),
-            )
-            model_usage["judge"] = judge_usage
-            score_findings(
-                store, run_id, coverage_texts,
-                lambda _findings, _coverage: scores,
-            )
+            findings = [f for f in store.findings(run_id) if f["kind"] != "nothing_found"]
+            if findings:  # no judge call (and no usage) when there is nothing to score
+                scores, judge_cost, judge_usage = await _call_judge(
+                    judge_scorer, findings, coverage_texts, remaining(),
+                )
+                model_usage["judge"] = judge_usage
+                score_findings(
+                    store, run_id, coverage_texts,
+                    lambda _findings, _coverage: scores,
+                )
             remaining()
             status = "complete" if agent_success and not missing else "incomplete"
     except asyncio.TimeoutError:

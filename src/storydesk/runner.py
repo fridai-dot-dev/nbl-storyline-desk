@@ -175,6 +175,8 @@ async def run_live(
     """Run a model only when a caller has already opted into the live CLI path."""
     if run_type not in RUN_TYPES:
         raise ValueError(f"unknown run type: {run_type}")
+    store.init()
+    run_id = store.start_run(run_type, game_id, as_of, route)
     started = time.monotonic()
     limit = float(RUN_TYPES[run_type]["time_limit_s"] if time_limit_s is None else time_limit_s)
     deadline = started + limit
@@ -185,8 +187,6 @@ async def run_live(
             raise asyncio.TimeoutError
         return left
 
-    store.init()
-    run_id = store.start_run(run_type, game_id, as_of, route)
     status = "error"
     agent_cost = 0.0
     judge_cost = 0.0

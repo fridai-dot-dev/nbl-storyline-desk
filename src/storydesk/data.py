@@ -42,6 +42,27 @@ def _display_name(value: Any) -> str | None:
     return None
 
 
+def _period_number(value: Any) -> int | None:
+    """Return a usable play-by-play period without treating booleans as periods."""
+    if isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _event_timestamp(event: dict[str, Any]) -> datetime | None:
+    """Parse an optional payload timestamp, discarding malformed event records."""
+    timestamp = event.get("timestamp")
+    if not timestamp:
+        return None
+    try:
+        return _utc_naive(timestamp)
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 def _payload_rows(path: Path) -> tuple[str, datetime | None, list[tuple[Any, ...]]]:
     """Read one small match payload; large historical data always stays in DuckDB."""
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -57,12 +78,20 @@ def _payload_rows(path: Path) -> tuple[str, datetime | None, list[tuple[Any, ...
         for item in (match.get("home_team") or {}, match.get("away_team") or {})
         if item.get("external_id")
     })
-    end_time: datetime | None = None
+    final_period_end: tuple[int, datetime] | None = None
+    completed_time: datetime | None = None
     rows: list[tuple[Any, ...]] = []
     for event in match.get("play_by_play") or []:
+        if not isinstance(event, dict):
+            continue
+        event_time = _event_timestamp(event)
+        if event.get("action_type") == "period" and event.get("sub_type") == "End" and event_time:
+            period = _period_number(event.get("period"))
+            if period is not None and (final_period_end is None or period > final_period_end[0]):
+                final_period_end = (period, event_time)
+        if event.get("system_action_type") == "game_game_completed" and event_time:
+            completed_time = event_time
         timestamp = event.get("timestamp")
-        if event.get("system_action_type") == "game_game_completed" and timestamp:
-            end_time = _utc_naive(timestamp)
         team = _display_name(event.get("team"))
         if team is None and event.get("team") is not None:
             team = team_names.get(str(event["team"]))
@@ -78,9 +107,9 @@ def _payload_rows(path: Path) -> tuple[str, datetime | None, list[tuple[Any, ...
             event.get("sub_type"),
             team,
             _display_name(event.get("player")),
-            _utc_naive(timestamp) if timestamp else None,
+            event_time,
         ))
-    return match_id, end_time, rows
+    return match_id, (final_period_end[1] if final_period_end else completed_time), rows
 
 
 def _sql_literal(value: Any) -> str:

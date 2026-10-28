@@ -53,6 +53,8 @@ def record_result(store: Store, run_id: int, result: Any, *, route: str, num_age
     if result is None:
         store.finish_run(run_id, status="timeout", cost_usd=None, duration_s=None, model_usage={}, num_agents=num_agents, route=route)
         return
+    if isinstance(summary := getattr(result, "result", None), str) and summary.strip():
+        store.set_run_summary(run_id, summary.strip())
     success = not bool(getattr(result, "is_error", False)) and getattr(result, "subtype", "") == "success"
     status = "complete" if success else ("timeout" if getattr(result, "terminal_reason", None) == "timeout" else "error")
     duration_ms = getattr(result, "duration_ms", None)
@@ -173,6 +175,22 @@ async def _default_judge_scorer(
     )
 
 
+async def rejudge_live(store: Store, run_id: int, *, stats_db: str | Path, corpus_dir: str | Path) -> list[dict[str, Any]]:
+    """Run the independent judge again for one finished run after an explicit live opt-in."""
+    run = store.get_run(run_id)
+    if not run.get("finished_at"):
+        raise ValueError(f"run {run_id} has not finished")
+    ctx = ToolContext(
+        stats_db=stats_db, store=store, corpus_dir=corpus_dir, run_id=run_id, as_of=run["as_of"],
+    )
+    findings = [finding for finding in store.findings(run_id) if finding["kind"] != "nothing_found"]
+    if not findings:
+        return []
+    coverage_texts = _coverage_texts(ctx, run["game_id"])
+    scores, _cost, _usage = await _default_judge_scorer(findings, coverage_texts)
+    return score_findings(store, run_id, coverage_texts, lambda _findings, _coverage: scores)
+
+
 async def _call_judge(
     scorer: Callable[[list[dict[str, Any]], list[str]], Any] | None,
     findings: list[dict[str, Any]], coverage_texts: list[str], seconds: float,
@@ -194,13 +212,20 @@ async def run_live(
     corpus_dir: str | Path, digest_dir: str | Path, question: str | None = None,
     anchor_finding_id: int | None = None, route: str = "sdk", client_factory: Any = None,
     judge_scorer: Callable[[list[dict[str, Any]], list[str]], Any] | None = None,
-    time_limit_s: float | None = None,
+    time_limit_s: float | None = None, asked_by: str | None = None,
 ) -> int:
     """Run a model only when a caller has already opted into the live CLI path."""
     if run_type not in RUN_TYPES:
         raise ValueError(f"unknown run type: {run_type}")
+    if run_type == "follow_up" and (anchor_finding_id is None or not question or not question.strip()):
+        raise ValueError("follow-up runs require an anchor finding and question")
     store.init()
     run_id = store.start_run(run_type, game_id, as_of, route)
+    request_id = (
+        store.add_request(anchor_finding_id, asked_by or "producer", question.strip())
+        if run_type == "follow_up" and anchor_finding_id is not None and question is not None
+        else None
+    )
     started = time.monotonic()
     limit = float(RUN_TYPES[run_type]["time_limit_s"] if time_limit_s is None else time_limit_s)
     deadline = started + limit
@@ -216,13 +241,15 @@ async def run_live(
     judge_cost = 0.0
     model_usage: dict[str, Any] = {}
 
-    def capture_result(result: Any | None) -> bool:
+    def capture_result(result: Any | None, *, record_summary: bool = False) -> bool:
         nonlocal agent_cost, model_usage
         if result is None:
             return False
         agent_cost = float(getattr(result, "total_cost_usd", 0.0) or 0.0)
         usage = getattr(result, "model_usage", None)
         model_usage = dict(usage) if isinstance(usage, dict) else {}
+        if record_summary and isinstance(summary := getattr(result, "result", None), str) and summary.strip():
+            store.set_run_summary(run_id, summary.strip())
         return not bool(getattr(result, "is_error", False)) and getattr(result, "subtype", "") == "success"
 
     try:
@@ -245,7 +272,7 @@ async def run_live(
         missing: list[str] = []
         async with factory(options) as client:
             phase_status, result = await _query_with_deadline(client, prompt, remaining())
-            agent_success = capture_result(result)
+            agent_success = capture_result(result, record_summary=True)
             if phase_status == "timeout":
                 status = "timeout"
             else:
@@ -297,4 +324,6 @@ async def run_live(
             duration_s=time.monotonic() - started, model_usage=model_usage,
             num_agents=5, route=route,
         )
+        if request_id is not None:
+            store.answer_request(request_id, run_id)
     return run_id

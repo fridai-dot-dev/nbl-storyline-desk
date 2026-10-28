@@ -276,7 +276,7 @@ def write_finding(
     evidence: list[dict[str, Any]], number: float | int | None = None, query: str | None = None,
     chart: dict[str, Any] | None = None, parent_id: int | None = None,
     audience: tuple[str, ...] | list[str] = (), sensitivity: str | None = None,
-    prompted_by: str | None = None,
+    prompted_by: str | None = None, headline: str | None = None,
 ) -> int:
     if kind not in FINDING_KINDS:
         raise ToolError(f"unknown finding kind: {kind}")
@@ -284,6 +284,13 @@ def write_finding(
         raise ToolError(f"unknown source type: {source_type}")
     if not claim or not str(claim).strip():
         raise ToolError("a finding needs a claim")
+    if headline is not None:
+        if not isinstance(headline, str) or not headline.strip():
+            raise ToolError("headline must be plain text")
+        if "<" in headline or ">" in headline:
+            raise ToolError("headline must be plain text")
+        if len(headline) > 120 or len(headline.split()) > 14:
+            raise ToolError("headline must be at most 14 words or 120 characters")
     if kind == "checked" and (number is None or not query):
         raise ToolError("checked findings require a number and query")
     if query is not None:
@@ -314,6 +321,7 @@ def write_finding(
         run_id=ctx.run_id, parent_id=parent_id, agent=agent, source_type=source_type,
         claim=claim, kind=kind, number=number, query=query, chart=chart,
         audience=audience, sensitivity=sensitivity, prompted_by=prompted_by,
+        headline=headline.strip() if headline else None,
     )
     ctx.store.add_evidence(finding_id, evidence)
     return finding_id

@@ -39,7 +39,7 @@ class Store:
                     run_type TEXT NOT NULL, game_id TEXT NOT NULL, as_of TEXT NOT NULL, route TEXT NOT NULL,
                     status TEXT NOT NULL DEFAULT 'pending', cost_usd REAL, duration_s REAL,
                     model_usage TEXT NOT NULL DEFAULT '{}', num_agents INTEGER,
-                    started_at TEXT NOT NULL, finished_at TEXT
+                    summary TEXT, started_at TEXT NOT NULL, finished_at TEXT
                 );
                 CREATE TABLE IF NOT EXISTS findings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +47,7 @@ class Store:
                     agent TEXT NOT NULL, source_type TEXT NOT NULL, claim TEXT NOT NULL, kind TEXT NOT NULL,
                     number REAL, query TEXT, chart TEXT, status TEXT NOT NULL DEFAULT 'pending',
                     sensitivity TEXT, audience TEXT NOT NULL DEFAULT '[]', prompted_by TEXT,
-                    drop_reason TEXT, novelty REAL, audience_fit REAL, direction REAL,
+                    drop_reason TEXT, novelty REAL, audience_fit REAL, direction REAL, headline TEXT,
                     created_at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS evidence (
@@ -85,6 +85,14 @@ class Store:
                 );
                 """
             )
+            self._add_column_if_missing(con, "runs", "summary", "TEXT")
+            self._add_column_if_missing(con, "findings", "headline", "TEXT")
+
+    @staticmethod
+    def _add_column_if_missing(con: sqlite3.Connection, table: str, name: str, definition: str) -> None:
+        columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
+        if name not in columns:
+            con.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
 
     def start_run(self, run_type: str, game_id: str, as_of: str, route: str) -> int:
         with self._con() as con:
@@ -114,16 +122,21 @@ class Store:
                 (status, cost_usd, duration_s, _json(model_usage or {}), num_agents, route, _now(), run_id),
             )
 
+    def set_run_summary(self, run_id: int, text: str | None) -> None:
+        with self._con() as con:
+            con.execute("UPDATE runs SET summary = ? WHERE id = ?", (text, run_id))
+
     def add_finding(self, **fields: Any) -> int:
         names = [
             "run_id", "parent_id", "agent", "source_type", "claim", "kind", "number", "query", "chart",
-            "sensitivity", "audience", "prompted_by", "created_at",
+            "sensitivity", "audience", "prompted_by", "headline", "created_at",
         ]
         values = [
             fields.get("run_id"), fields.get("parent_id"), fields["agent"], fields["source_type"],
             fields["claim"], fields["kind"], fields.get("number"), fields.get("query"),
             _json(fields["chart"]) if fields.get("chart") is not None else None,
-            fields.get("sensitivity"), _json(list(fields.get("audience") or [])), fields.get("prompted_by"), _now(),
+            fields.get("sensitivity"), _json(list(fields.get("audience") or [])), fields.get("prompted_by"),
+            fields.get("headline"), _now(),
         ]
         with self._con() as con:
             cur = con.execute(
@@ -167,6 +180,10 @@ class Store:
                 f"UPDATE findings SET {', '.join(f'{name} = ?' for name in names)} WHERE id = ?",
                 [normalised[name] for name in names] + [finding_id],
             )
+
+    def set_headline(self, finding_id: int, text: str | None) -> None:
+        with self._con() as con:
+            con.execute("UPDATE findings SET headline = ? WHERE id = ?", (text, finding_id))
 
     def add_evidence(self, finding_id: int, evidence: Iterable[dict[str, Any]]) -> None:
         rows = [

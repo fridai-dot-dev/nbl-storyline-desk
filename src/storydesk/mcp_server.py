@@ -96,11 +96,12 @@ async def mcp_write_finding(
     audience: list[str] | None = None,
     sensitivity: str | None = None,
     prompted_by: str | None = None,
+    headline: str | None = None,
 ) -> int:
     return _logged("write_finding", write_finding)(
         agent=agent, source_type=source_type, claim=claim, kind=kind, evidence=evidence,
         number=number, query=query, chart=chart, parent_id=parent_id,
-        audience=audience or [], sensitivity=sensitivity, prompted_by=prompted_by,
+        audience=audience or [], sensitivity=sensitivity, prompted_by=prompted_by, headline=headline,
     )
 
 

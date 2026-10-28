@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from html import escape
 import math
+import re
 import xml.etree.ElementTree as ET
 from typing import Iterable
 
@@ -22,9 +23,30 @@ def _text(x: float, y: float, value: str, *, anchor: str = "middle") -> str:
     return f'<text x="{x:.2f}" y="{y:.2f}" text-anchor="{anchor}">{escape(value)}</text>'
 
 
+_SEASON = re.compile(r"^(\d{4})-(\d{4})$")
+
+
+def _display_label(label: str) -> str:
+    """Keep dense season axes legible without changing the underlying category."""
+    if match := _SEASON.fullmatch(label):
+        return f"{match.group(1)[-2:]}-{match.group(2)[-2:]}"
+    return label
+
+
+def _axis_label(x: float, y: float, label: str, *, rotate: bool) -> str:
+    if not rotate:
+        return _text(x, y, label)
+    return (
+        f'<text x="{x:.2f}" y="{y:.2f}" text-anchor="end" '
+        f'transform="rotate(-45 {x:.2f} {y:.2f})">{escape(label)}</text>'
+    )
+
+
 def render_bar_chart(title: str, labels: Iterable[str], values: Iterable[float], highlight_index: int, y_label: str | None = None) -> str:
     labels, values = list(labels), [float(value) for value in values]
     _validate(labels, values, highlight_index)
+    display_labels = [_display_label(str(label)) for label in labels]
+    rotate_labels = any(len(label) > 8 for label in display_labels)
     width, height, left, right, top, bottom = 680, 340, 56, 20, 38, 68
     baseline = height - bottom
     max_value = max(max(values), 0.0)
@@ -35,7 +57,7 @@ def render_bar_chart(title: str, labels: Iterable[str], values: Iterable[float],
     slot = usable_width / len(labels)
     bar_width = slot * 0.62
     marks, labels_svg = [], []
-    for index, (label, value) in enumerate(zip(labels, values)):
+    for index, (label, display_label, value) in enumerate(zip(labels, display_labels, values)):
         x = left + slot * index + (slot - bar_width) / 2
         y_value = top + ((max_value - value) / span) * (height - top - bottom)
         y, bar_height = (y_value, baseline - y_value) if value >= 0 else (baseline, y_value - baseline)
@@ -45,7 +67,7 @@ def render_bar_chart(title: str, labels: Iterable[str], values: Iterable[float],
             f'data-label="{escape(str(label))}" data-value="{value}"/>'
         )
         marks.append(_text(x + bar_width / 2, y - 6 if value >= 0 else y + bar_height + 14, f"{value:g}"))
-        labels_svg.append(_text(x + bar_width / 2, height - 36, str(label)))
+        labels_svg.append(_axis_label(x + bar_width / 2, height - 30, display_label, rotate=rotate_labels))
     ylabel = _text(16, 22, y_label or "Value", anchor="start")
     return (
         f'<svg xmlns="{SVG_NS}" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
@@ -60,6 +82,8 @@ def render_bar_chart(title: str, labels: Iterable[str], values: Iterable[float],
 def render_line_chart(title: str, labels: Iterable[str], values: Iterable[float], highlight_index: int, y_label: str | None = None) -> str:
     labels, values = list(labels), [float(value) for value in values]
     _validate(labels, values, highlight_index)
+    display_labels = [_display_label(str(label)) for label in labels]
+    rotate_labels = any(len(label) > 8 for label in display_labels)
     width, height, left, right, top, bottom = 680, 340, 56, 20, 38, 68
     baseline = height - bottom
     minimum, maximum = min(values), max(values)
@@ -69,11 +93,11 @@ def render_line_chart(title: str, labels: Iterable[str], values: Iterable[float]
     coordinates = [(left + index * step, top + ((maximum - value) / span) * (height - top - bottom)) for index, value in enumerate(values)]
     path = " ".join(f"{x:.2f},{y:.2f}" for x, y in coordinates)
     marks, labels_svg = [], []
-    for index, ((x, y), label, value) in enumerate(zip(coordinates, labels, values)):
+    for index, ((x, y), label, display_label, value) in enumerate(zip(coordinates, labels, display_labels, values)):
         css = "point highlight" if index == highlight_index else "point muted"
         marks.append(f'<circle class="{css}" cx="{x:.2f}" cy="{y:.2f}" r="5" data-label="{escape(str(label))}" data-value="{value}"/>')
         marks.append(_text(x, y - 10, f"{value:g}"))
-        labels_svg.append(_text(x, height - 36, str(label)))
+        labels_svg.append(_axis_label(x, height - 30, display_label, rotate=rotate_labels))
     ylabel = _text(16, 22, y_label or "Value", anchor="start")
     return (
         f'<svg xmlns="{SVG_NS}" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
@@ -114,7 +138,7 @@ def check_chart(svg: str, expected_title: str) -> list[str]:
         label, value = mark.attrib.get("data-label"), mark.attrib.get("data-value")
         if value is None:
             problems.append("mark lacks data-value")
-        if label not in visible:
+        if label not in visible and _display_label(label) not in visible:
             problems.append(f"label {label!r} is not visible")
         if mark.tag.split("}")[-1] == "rect":
             try:

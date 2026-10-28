@@ -21,3 +21,4 @@ data/raw/
 # Local run data (the published demo copies what it needs into site/)
 data/
 store/
+site/

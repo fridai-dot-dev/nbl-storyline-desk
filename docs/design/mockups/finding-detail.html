@@ -1,0 +1,206 @@
+<style>
+  .fd-note { font-size: .8rem; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: 8px; padding: .5rem .75rem; margin-bottom: 1.25rem; }
+  .fd-frame { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: .8rem; }
+  .fd-top { padding: .7rem .95rem; border-bottom: 1px solid var(--border); background: var(--bg-primary); }
+  .fd-crumb { font-size: .7rem; color: var(--text-secondary); margin-bottom: .3rem; }
+  .fd-titlerow { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .6rem; align-items: center; }
+  .fd-title { font-size: 1.05rem; font-weight: 700; }
+  .pill { display: inline-block; font-size: .63rem; font-weight: 600; padding: .05rem .4rem; border-radius: 99px; white-space: nowrap; }
+  .p-ok { background: rgba(52,199,89,.18); color: #1f8f3d; }
+  .p-lead { background: rgba(10,132,255,.15); color: #0a6ad6; }
+  .p-hold { background: rgba(255,159,10,.2); color: #a86400; }
+  .p-mut { background: var(--bg-tertiary); color: var(--text-secondary); }
+  .btns { display: flex; gap: .35rem; flex-wrap: wrap; }
+  .btn { font-size: .68rem; border: 1px solid var(--border); border-radius: 6px; padding: .14rem .5rem; background: var(--bg-secondary); color: var(--text-primary); white-space: nowrap; }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.off { opacity: .45; border-style: dashed; }
+  .fd-grid { display: grid; grid-template-columns: 1fr 330px; }
+  @media (max-width: 1100px) { .fd-grid { grid-template-columns: 1fr; } }
+  .fd-col { padding: .9rem .95rem; }
+  .fd-col + .fd-col { border-left: 1px solid var(--border); }
+  .h { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); margin: 0 0 .5rem; font-weight: 600; }
+  .h.gap { margin-top: 1.2rem; }
+  .box { border: 1px solid var(--border); border-radius: 9px; padding: .7rem .75rem; }
+
+  /* big chart */
+  .ct { font-size: .86rem; font-weight: 650; }
+  .cs { font-size: .7rem; color: var(--text-secondary); margin-bottom: .55rem; }
+  .ctrl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; margin-bottom: .6rem; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .seg span { font-size: .68rem; padding: .15rem .55rem; color: var(--text-secondary); }
+  .seg span.on { background: var(--selected-bg); color: var(--accent); font-weight: 650; }
+  .seg span + span { border-left: 1px solid var(--border); }
+  .plot { position: relative; height: 170px; margin-left: 26px; border-bottom: 1px solid var(--text-tertiary); }
+  .gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); }
+  .gl i { position: absolute; left: -26px; top: -7px; width: 20px; text-align: right; font-style: normal; font-size: .6rem; color: var(--text-secondary); }
+  .avg { position: absolute; left: 0; right: 0; border-top: 1.5px dashed var(--text-secondary); z-index: 2; }
+  .avg em { position: absolute; left: 4px; top: -16px; border-radius: 4px; font-style: normal; font-size: .62rem; color: var(--text-secondary); background: var(--bg-secondary); padding: 0 .25rem; }
+  .bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 8px; padding: 0 4px; }
+  .bar { flex: 1; position: relative; background: var(--accent); opacity: .32; border-radius: 4px 4px 0 0; }
+  .bar.now { opacity: 1; }
+  .bar:hover { opacity: .55; } .bar.now:hover { opacity: .85; }
+  .bar span { position: absolute; top: -15px; left: -6px; right: -6px; text-align: center; font-size: .66rem; font-weight: 700; color: var(--text-primary); }
+  .xl { display: flex; gap: 8px; padding: 0 4px; margin: 4px 0 0 26px; }
+  .xl span { flex: 1; text-align: center; font-size: .6rem; color: var(--text-secondary); white-space: nowrap; }
+  .xl span.now { color: var(--text-primary); font-weight: 700; }
+  .query { margin-top: .7rem; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-primary); }
+  .query-h { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem .55rem; font-size: .7rem; border-bottom: 1px solid var(--border); }
+  .query pre { margin: 0; padding: .5rem .6rem; font-size: .66rem; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+  /* trail */
+  .trail { position: relative; padding-left: 1.1rem; }
+  .trail::before { content: ''; position: absolute; left: .32rem; top: .4rem; bottom: .4rem; width: 2px; background: var(--border); }
+  .step { position: relative; margin-bottom: .65rem; }
+  .step::before { content: ''; position: absolute; left: -1.02rem; top: .35rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg-secondary); }
+  .step.branch::before { background: var(--bg-secondary); border: 2px solid var(--accent); }
+  .step-h { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; font-size: .74rem; font-weight: 650; }
+  .agent { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: .04rem .35rem; border-radius: 4px; background: var(--bg-tertiary); color: var(--text-secondary); }
+  .step p { font-size: .72rem; color: var(--text-secondary); margin: .15rem 0 .2rem; }
+  .step a, .src a, .q a { font-size: .68rem; color: var(--accent); text-decoration: none; }
+  .led { font-size: .64rem; color: var(--text-secondary); font-style: italic; }
+
+  /* quotes */
+  .tabs { display: flex; gap: .3rem; margin-bottom: .55rem; }
+  .tab { font-size: .7rem; padding: .18rem .55rem; border-radius: 6px; border: 1px solid var(--border); color: var(--text-secondary); }
+  .tab.on { background: var(--selected-bg); border-color: var(--selected-border); color: var(--accent); font-weight: 650; }
+  .q { border-left: 3px solid var(--accent); background: var(--bg-primary); border-radius: 0 7px 7px 0; padding: .4rem .55rem; margin-bottom: .45rem; }
+  .q.push { border-left-color: var(--warning); }
+  .q blockquote { margin: 0 0 .2rem; font-size: .76rem; line-height: 1.4; }
+  .q small { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; font-size: .64rem; color: var(--text-secondary); }
+  .privacy { font-size: .64rem; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: 6px; padding: .35rem .5rem; margin-bottom: .55rem; }
+  .lead { border: 1px dashed var(--border); border-radius: 8px; padding: .5rem .6rem; margin-bottom: .5rem; }
+  .lead b { font-size: .74rem; }
+  .lead p { font-size: .68rem; color: var(--text-secondary); margin: .15rem 0 .35rem; }
+  .src { display: flex; justify-content: space-between; gap: .5rem; font-size: .72rem; padding: .3rem 0; border-bottom: 1px solid var(--border); }
+  .src small { color: var(--text-secondary); display: block; font-size: .64rem; }
+</style>
+
+<h2>Finding detail: following a lead</h2>
+<p class="subtitle">What opens when someone clicks an angle on the board or in the email: the full chart and its data, the quotes behind it, how the agents got there, and where to go next.</p>
+<div class="fd-note">Mockup only. The result is real; every value, quote and timestamp is invented. Players are described by role.</div>
+
+<div class="fd-frame">
+  <div class="fd-top">
+    <div class="fd-crumb">Board › Wildcats 103–102 United › Finding 1 of 7</div>
+    <div class="fd-titlerow">
+      <div>
+        <div class="fd-title">Perth's late-game scoring against United</div>
+        <div style="margin-top:.25rem"><span class="pill p-ok">stats checked</span> <span class="pill p-lead">backed by CEO</span> <span class="pill p-mut">For: NBL Now · Social · ESPN</span> <span class="pill p-mut">Social, ESPN using it</span></div>
+      </div>
+      <div class="btns"><span class="btn pri">Using it</span><span class="btn">Already had it</span><span class="btn">Not for us</span><span class="btn">Comment</span><span class="btn off" title="Future direction">Make a graphic · later</span></div>
+    </div>
+  </div>
+
+  <div class="fd-grid">
+    <!-- LEFT -->
+    <div class="fd-col">
+      <div class="box">
+        <div class="ct">Perth's 4th-quarter points against United</div>
+        <div class="cs">Tonight's 34 is Perth's most in a 4th quarter against United since at least 2015-16, where our data starts</div>
+        <div class="ctrl">
+          <div class="seg"><span>Last 5</span><span class="on">Last 10</span><span>All since 2015-16</span></div>
+          <div class="seg"><span class="on">Chart</span><span>Table</span><span>CSV</span></div>
+        </div>
+        <div class="plot">
+          <div class="gl" style="bottom:100%"><i>40</i></div>
+          <div class="gl" style="bottom:75%"><i>30</i></div>
+          <div class="gl" style="bottom:50%"><i>20</i></div>
+          <div class="gl" style="bottom:25%"><i>10</i></div>
+          <div class="gl" style="bottom:0%"><i>0</i></div>
+          <div class="avg" style="bottom:57%"><em>previous 9 avg 22.8</em></div>
+          <div class="bars">
+            <div class="bar" style="height:45%" title="Nov 2023: 18"></div>
+            <div class="bar" style="height:62.5%" title="Jan 2024: 25"></div>
+            <div class="bar" style="height:55%" title="Oct 2024: 22"></div>
+            <div class="bar" style="height:67.5%" title="Dec 2024: 27"></div>
+            <div class="bar" style="height:57.5%" title="Jan 2025: 23"></div>
+            <div class="bar" style="height:52.5%" title="Oct 2025: 21"></div>
+            <div class="bar" style="height:60%" title="Dec 2025: 24"></div>
+            <div class="bar" style="height:47.5%" title="Jan 2026: 19"></div>
+            <div class="bar" style="height:65%" title="Feb 2026: 26"></div>
+            <div class="bar now" style="height:85%" title="Tonight: 34"><span>34</span></div>
+          </div>
+        </div>
+        <div class="xl"><span>Nov 23</span><span>Jan 24</span><span>Oct 24</span><span>Dec 24</span><span>Jan 25</span><span>Oct 25</span><span>Dec 25</span><span>Jan 26</span><span>Feb 26</span><span class="now">Tonight</span></div>
+
+        <div class="query">
+          <div class="query-h" style="border-bottom:none"><span><b>How we know</b> · <span class="pill p-ok">rechecked by code 10:41 pm · matches</span></span><span style="color:var(--accent)">Show the query ▸</span></div>
+        </div>
+      </div>
+
+      <div class="h gap">How the agents got here</div>
+      <div class="trail">
+        <div class="step">
+          <div class="step-h"><span class="agent">Commentary</span> Excitement spike in the 4th quarter</div>
+          <p>Commentators' energy and pace peaked at 1:52:10; "taken this game over" was said twice in 3 minutes.</p>
+          <a href="#">▶ Play from 1:52:10</a>
+        </div>
+        <div class="step branch">
+          <div class="step-h"><span class="agent">Stats</span> Checked the moment in the play-by-play</div>
+          <p>Perth's starting guard scored 14 of Perth's 34 4th-quarter points, including a 12–0 run.</p>
+          <span class="led">led here from the commentary spike</span> · <a href="#">Open play-by-play</a>
+        </div>
+        <div class="step branch">
+          <div class="step-h"><span class="agent">History</span> Compared with every past meeting</div>
+          <p>Most 4th-quarter points by Perth against United in any meeting since 2015-16. The claim says "since at least 2015-16" because that's where our data starts.</p>
+          <span class="led">branched to find the record</span> · <a href="#">Open in stats store</a>
+        </div>
+        <div class="step branch">
+          <div class="step-h"><span class="agent">Social</span> Looked for the fan reaction</div>
+          <p>240 comments in the r/NBL game thread; 61% mention the 4th quarter. One thread argues United lost it rather than Perth won it.</p>
+          <span class="led">branched from the run</span> · <a href="#">Open thread</a>
+        </div>
+        <div class="step">
+          <div class="step-h"><span class="agent">Cross-check</span> Tested against the pre-game storyline</div>
+          <p>NBL Now said on 21 Oct that "United close games better than anyone". This game contradicts it; one game is a small sample.</p>
+          <a href="#">▶ Play NBL Now at 14:05</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="fd-col">
+      <div class="h">What people said</div>
+      <div class="tabs"><span class="tab on">Supports (6)</span><span class="tab">Pushes back (2)</span><span class="tab">All sources</span></div>
+      <div class="privacy">Fan comments: handles hidden. Quoting a fan outside LK needs sign-off.</div>
+
+      <div class="q">
+        <blockquote>"He has taken this game over. That's twelve straight for Perth!"</blockquote>
+        <small><span class="pill p-mut">Commentary</span> ESPN call · Q4 at 1:52:10 · <a href="#">▶ play</a></small>
+      </div>
+      <div class="q">
+        <blockquote>"Perth have owned the last five minutes all night."</blockquote>
+        <small><span class="pill p-mut">Commentary</span> ESPN call · Q4 at 1:58:40 · <a href="#">▶ play</a></small>
+      </div>
+      <div class="q">
+        <blockquote>"Best fourth quarter I've seen from Perth in years."</blockquote>
+        <small><span class="pill p-mut">r/NBL</span> fan · ▲ 86 · <a href="#">open</a></small>
+      </div>
+
+      <div class="h gap">Pushes back</div>
+      <div class="q push">
+        <blockquote>"United gave it away. Five turnovers in four minutes."</blockquote>
+        <small><span class="pill p-mut">r/NBL</span> fan · ▲ 41 · <span class="pill p-hold">not yet checked</span></small>
+      </div>
+
+      <div class="h gap">Follow the lead</div>
+      <div class="lead">
+        <b>Did United lose it rather than Perth win it?</b>
+        <p>From the fan comment above: check United's 4th-quarter turnovers against their season rate.</p>
+        <div class="btns"><span class="btn pri">Look into it now · ~2 min, ~US$0.15</span><span class="btn">Next run</span></div>
+      </div>
+      <div class="lead">
+        <b>Is the guard's late scoring a season-long pattern?</b>
+        <p>An open lead the agents found but didn't pursue in this run.</p>
+        <div class="btns"><span class="btn pri">Look into it now</span><span class="btn">Track it</span></div>
+      </div>
+
+      <div class="h gap">Original sources</div>
+      <div class="src"><div>NBL.com match centre<small>box score, play-by-play</small></div><a href="#">open ↗</a></div>
+      <div class="src"><div>ESPN broadcast<small>full game, transcript</small></div><a href="#">open ↗</a></div>
+      <div class="src"><div>r/NBL post-game thread<small>240 comments</small></div><a href="#">open ↗</a></div>
+      <div class="src"><div>NBL Now, 21 Oct<small>pre-game episode</small></div><a href="#">open ↗</a></div>
+      <div class="src"><div>Stats store<small>10 meetings since Nov 2023</small></div><a href="#">open ↗</a></div>
+    </div>
+  </div>
+</div>

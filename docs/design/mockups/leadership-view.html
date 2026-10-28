@@ -1,0 +1,192 @@
+<style>
+  .lv-note { font-size: .8rem; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: 8px; padding: .5rem .75rem; margin-bottom: 1.25rem; }
+  .lv-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+  @media (max-width: 1000px) { .lv-wrap { grid-template-columns: 1fr; } }
+  .lv-frame { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: .82rem; }
+  .lv-frame-h { background: var(--bg-tertiary); padding: .5rem .85rem; font-size: .72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; display:flex; justify-content:space-between; }
+  .lv-body { padding: .9rem 1rem; }
+  .lv-mail-meta { border-bottom: 1px solid var(--border); padding-bottom: .6rem; margin-bottom: .75rem; color: var(--text-secondary); font-size: .75rem; line-height: 1.5; }
+  .lv-mail-meta b { color: var(--text-primary); }
+  .lv-score { font-size: 1.05rem; font-weight: 650; margin-bottom: .15rem; }
+  .lv-sub { color: var(--text-secondary); font-size: .74rem; margin-bottom: .8rem; }
+  .lv-h { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); margin: .9rem 0 .35rem; font-weight: 600; }
+  .lv-list { padding-left: 1rem; }
+  .lv-list li { margin-bottom: .2rem; }
+  .lv-moved { width: 100%; border-collapse: collapse; font-size: .76rem; }
+  .lv-moved td { padding: .3rem .25rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .pill { display: inline-block; font-size: .64rem; font-weight: 600; padding: .05rem .4rem; border-radius: 99px; white-space: nowrap; }
+  .p-up { background: rgba(52,199,89,.18); color: #1f8f3d; }
+  .p-down { background: rgba(255,59,48,.15); color: #c62d24; }
+  .p-new { background: rgba(10,132,255,.15); color: #0a6ad6; }
+  .p-hold { background: rgba(255,159,10,.2); color: #a86400; }
+  .p-ok { background: rgba(52,199,89,.18); color: #1f8f3d; }
+  .p-aud { background: var(--bg-tertiary); color: var(--text-secondary); }
+  .lv-angle { border: 1px solid var(--border); border-radius: 8px; padding: .55rem .65rem; margin-bottom: .5rem; }
+  .lv-angle-t { font-weight: 600; margin-bottom: .2rem; }
+  .lv-angle-w { color: var(--text-secondary); font-size: .74rem; margin-bottom: .4rem; }
+  .lv-btns { display: flex; gap: .35rem; flex-wrap: wrap; }
+  .lv-btn { font-size: .68rem; border: 1px solid var(--border); border-radius: 6px; padding: .12rem .45rem; background: var(--bg-primary); color: var(--text-primary); }
+  .lv-btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .lv-bars { display: flex; align-items: flex-end; gap: 6px; height: 46px; margin: .2rem 0 .15rem; }
+  .lv-bars div { flex: 1; background: var(--accent); opacity: .75; border-radius: 3px 3px 0 0; }
+  .lv-bars-l { display: flex; gap: 6px; font-size: .62rem; color: var(--text-secondary); }
+  .lv-bars-l span { flex: 1; text-align: center; }
+  .lv-dir { border-left: 3px solid var(--accent); padding: .3rem .55rem; margin-bottom: .45rem; background: var(--bg-primary); border-radius: 0 6px 6px 0; }
+  .lv-dir small { color: var(--text-secondary); display: block; font-size: .68rem; }
+  .lv-input { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: .45rem .55rem; font-size: .75rem; color: var(--text-secondary); background: var(--bg-primary); margin-top: .3rem; }
+  .lv-foot { margin-top: .9rem; padding-top: .6rem; border-top: 1px solid var(--border); font-size: .7rem; color: var(--text-secondary); }
+  .lv-dash { display: grid; grid-template-columns: 92px 1fr 170px; min-height: 100%; }
+  .lv-nav { background: var(--bg-primary); border-right: 1px solid var(--border); padding: .7rem .5rem; font-size: .72rem; color: var(--text-secondary); }
+  .lv-nav div { padding: .25rem .35rem; border-radius: 5px; margin-bottom: .15rem; }
+  .lv-nav .on { background: var(--selected-bg); color: var(--accent); font-weight: 600; }
+  .lv-main { padding: .8rem .85rem; }
+  .lv-rail { border-left: 1px solid var(--border); padding: .8rem .7rem; background: var(--bg-primary); }
+  .lv-nudge { margin: .2rem 0 .9rem; border: 1px dashed var(--border); border-radius: 8px; padding: .5rem .65rem; font-size: .74rem; color: var(--text-secondary); }
+  .lv-nudge b { color: var(--text-primary); }
+  .lv-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+  .lv-card { border: 1px solid var(--border); border-radius: 8px; padding: .55rem .65rem; }
+</style>
+
+<h2>Leadership view: the post-game briefing</h2>
+<p class="subtitle">Same content, two ways of delivering it. Which one fits a CEO, NBL GM, LK director or marketing lead who missed the game?</p>
+<div class="lv-note">Mockup only. The result is real (Round 6, Perth Wildcats 103–102 Melbourne United, 23 Oct). Every other detail is invented to show the layout, and players are described by role, not by name.</div>
+
+<div class="lv-wrap">
+
+  <!-- OPTION A: EMAIL-FIRST -->
+  <div class="lv-frame">
+    <div class="lv-frame-h"><span>A · Email first</span><span>the briefing is the email</span></div>
+    <div class="lv-body">
+      <div class="lv-mail-meta">
+        <b>From:</b> NBL Storyline Desk &lt;desk@…&gt;<br>
+        <b>To:</b> CEO, NBL · <b>Sent:</b> 38 min after full time<br>
+        <b>Subject:</b> Wildcats 103–102 United: what moved, and 3 angles for your call
+      </div>
+      <div class="lv-score">Perth Wildcats 103 – 102 Melbourne United</div>
+      <div class="lv-sub">Round 6 · RAC Arena · 3-minute read</div>
+
+      <div class="lv-h">What happened</div>
+      <ul class="lv-list">
+        <li>Perth won by one at home after trailing for most of the second half.</li>
+        <li>Perth's starting guard scored most of their fourth-quarter points.</li>
+        <li>United lost a second straight away game.</li>
+      </ul>
+
+      <div class="lv-h">What moved since pre-game</div>
+      <table class="lv-moved">
+        <tr><td>"United have the league's best defence"</td><td><span class="pill p-down">challenged</span></td></tr>
+        <tr><td>"Perth's bench is a weakness"</td><td><span class="pill p-down">challenged</span></td></tr>
+        <tr><td>Perth's late-game scoring</td><td><span class="pill p-new">new</span></td></tr>
+      </table>
+
+      <div class="lv-h">During the game</div>
+      <div>Fan chatter peaked in the last 2 minutes. The top topic was <b>officiating</b>, which is held for sign-off (see below). 5 contributors flagged 9 moments live.</div>
+
+      <div class="lv-h">Angles for the next 48 hours</div>
+      <div class="lv-angle">
+        <div class="lv-angle-t">Perth's late-game record against United <span class="pill p-ok">stats checked</span></div>
+        <div class="lv-angle-w">For: social, ESPN broadcast</div>
+        <div class="lv-btns"><span class="lv-btn pri">Back it</span><span class="lv-btn">Comment</span><span class="lv-btn">Make it a directive</span><span class="lv-btn">Drop</span></div>
+      </div>
+      <div class="lv-angle">
+        <div class="lv-angle-t">United's defence: a blip or a trend? <span class="pill p-ok">stats checked</span></div>
+        <div class="lv-angle-w">For: NBL Now, ESPN · picks up the pre-game storyline</div>
+        <div class="lv-btns"><span class="lv-btn pri">Back it</span><span class="lv-btn">Comment</span><span class="lv-btn">Make it a directive</span><span class="lv-btn">Drop</span></div>
+      </div>
+      <div class="lv-angle">
+        <div class="lv-angle-t">Officiating in the final 2 minutes <span class="pill p-hold">held: needs comms sign-off</span></div>
+        <div class="lv-angle-w">For: internal only until approved</div>
+        <div class="lv-btns"><span class="lv-btn">Approve for producers</span><span class="lv-btn">Keep internal</span></div>
+      </div>
+
+      <div class="lv-h">Your directives</div>
+      <div class="lv-dir">Build the Rookie Round story <small>Set by marketing lead · expires 2 Nov · on track (2 angles this run)</small></div>
+      <div class="lv-dir">Ignite Cup awareness on Wednesday nights <small>Mandatory · set by GM · no expiry · <b>still happy with this?</b> Keep / Change / End</small></div>
+
+      <div class="lv-h">Give direction</div>
+      <div>Just reply to this email in plain language. It goes to the next run and to the producers.</div>
+
+      <div class="lv-foot">Open the full board → · This run: 14 agents, 38 min, US$1.84 (illustrative)</div>
+    </div>
+  </div>
+
+  <!-- OPTION B: DASHBOARD-FIRST -->
+  <div class="lv-frame">
+    <div class="lv-frame-h"><span>B · Dashboard first</span><span>the email is just a nudge</span></div>
+    <div class="lv-body" style="padding:0">
+      <div style="padding:.7rem .85rem 0">
+        <div class="lv-nudge"><b>Email:</b> "Wildcats 103–102 United: your briefing is ready (3 min). 1 item needs your sign-off." → <b>Open</b></div>
+      </div>
+      <div class="lv-dash">
+        <div class="lv-nav">
+          <div class="on">Briefing</div>
+          <div>Storylines</div>
+          <div>Directives</div>
+          <div>Producers</div>
+          <div>Runs &amp; cost</div>
+        </div>
+        <div class="lv-main">
+          <div class="lv-score">Wildcats 103 – 102 United</div>
+          <div class="lv-sub">Round 6 · briefing ready 38 min after full time</div>
+
+          <div class="lv-grid2">
+            <div class="lv-card">
+              <div class="lv-h" style="margin-top:0">What happened</div>
+              <div>Perth won by one after trailing; their starting guard dominated the fourth quarter.</div>
+            </div>
+            <div class="lv-card">
+              <div class="lv-h" style="margin-top:0">Fan chatter by quarter</div>
+              <div class="lv-bars"><div style="height:30%"></div><div style="height:45%"></div><div style="height:40%"></div><div style="height:100%"></div></div>
+              <div class="lv-bars-l"><span>Q1</span><span>Q2</span><span>Q3</span><span>Q4</span></div>
+            </div>
+          </div>
+
+          <div class="lv-h">What moved since pre-game</div>
+          <table class="lv-moved">
+            <tr><td>"United have the league's best defence"</td><td><span class="pill p-down">challenged</span></td></tr>
+            <tr><td>"Perth's bench is a weakness"</td><td><span class="pill p-down">challenged</span></td></tr>
+            <tr><td>Perth's late-game scoring</td><td><span class="pill p-new">new</span></td></tr>
+          </table>
+
+          <div class="lv-h">Angles</div>
+          <div class="lv-angle">
+            <div class="lv-angle-t">Perth's late-game record against United <span class="pill p-ok">checked</span></div>
+            <div class="lv-btns"><span class="lv-btn pri">Back it</span><span class="lv-btn">Comment</span><span class="lv-btn">Directive</span><span class="lv-btn">Drop</span></div>
+          </div>
+          <div class="lv-angle">
+            <div class="lv-angle-t">United's defence: a blip or a trend? <span class="pill p-ok">checked</span></div>
+            <div class="lv-btns"><span class="lv-btn pri">Back it</span><span class="lv-btn">Comment</span><span class="lv-btn">Directive</span><span class="lv-btn">Drop</span></div>
+          </div>
+          <div class="lv-angle">
+            <div class="lv-angle-t">Officiating in the final 2 minutes <span class="pill p-hold">needs sign-off</span></div>
+            <div class="lv-btns"><span class="lv-btn">Approve</span><span class="lv-btn">Keep internal</span></div>
+          </div>
+        </div>
+        <div class="lv-rail">
+          <div class="lv-h" style="margin-top:0">Directives</div>
+          <div class="lv-dir">Rookie Round story <small>expires 2 Nov · on track</small></div>
+          <div class="lv-dir">Ignite Cup Wednesdays <small>mandatory · <b>still happy?</b></small></div>
+          <div class="lv-h">Give direction</div>
+          <div class="lv-input">e.g. Is United's defence slipping since round 3?</div>
+          <div class="lv-h">This run</div>
+          <div style="font-size:.7rem;color:var(--text-secondary)">14 agents · 38 min · US$1.84<br>(illustrative)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:1.5rem">
+  <div class="label">Which fits busy leadership better?</div>
+  <div class="options">
+    <div class="option" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content"><h3>Email first</h3><p>They read and react without leaving their inbox; reply in plain language to give direction. The board is there for depth.</p></div>
+    </div>
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content"><h3>Dashboard first</h3><p>The email is a short nudge; reading, reacting and steering happen on the board, next to directives and run cost.</p></div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,19 @@
+# Private working files: never publish
+*.pdf
+JD.md
+initial-prompt.md
+polished-prompt.md
+response.md
+
+# Tooling
+.superpowers/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+
+# Raw downloads and scratch data (fetched by `storydesk fetch`)
+data/raw/
+*.duckdb
+*.duckdb.wal

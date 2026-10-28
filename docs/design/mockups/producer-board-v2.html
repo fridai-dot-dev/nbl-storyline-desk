@@ -1,0 +1,179 @@
+<style>
+  .pb-note { font-size: .8rem; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: 8px; padding: .5rem .75rem; margin-bottom: 1.25rem; }
+  .pb-frame { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: .8rem; }
+  .pb-top { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; justify-content: space-between; padding: .6rem .9rem; border-bottom: 1px solid var(--border); background: var(--bg-primary); }
+  .pb-top b { font-size: .95rem; }
+  .pb-role { border: 1px solid var(--border); border-radius: 6px; padding: .15rem .5rem; font-size: .74rem; background: var(--bg-secondary); }
+  .pb-meta { color: var(--text-secondary); font-size: .72rem; }
+  .pb-grid { display: grid; grid-template-columns: 210px 1fr 230px; }
+  @media (max-width: 1050px) { .pb-grid { grid-template-columns: 1fr; } }
+  .pb-col { padding: .8rem .85rem; }
+  .pb-col + .pb-col { border-left: 1px solid var(--border); }
+  .pb-h { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); margin: 0 0 .5rem; font-weight: 600; }
+  .pb-h.gap { margin-top: 1rem; }
+  .pb-feed { border-left: 3px solid var(--accent); padding: .35rem .55rem; margin-bottom: .5rem; background: var(--bg-primary); border-radius: 0 6px 6px 0; }
+  .pb-feed small { display: block; color: var(--text-secondary); font-size: .67rem; margin-top: .1rem; }
+  .pb-feed.hold { border-left-color: var(--warning); }
+  .pill { display: inline-block; font-size: .63rem; font-weight: 600; padding: .05rem .4rem; border-radius: 99px; white-space: nowrap; }
+  .p-ok { background: rgba(52,199,89,.18); color: #1f8f3d; }
+  .p-lead { background: rgba(10,132,255,.15); color: #0a6ad6; }
+  .p-hold { background: rgba(255,159,10,.2); color: #a86400; }
+  .p-use { background: var(--bg-tertiary); color: var(--text-secondary); }
+  .pb-angle { border: 1px solid var(--border); border-radius: 9px; padding: .65rem .7rem; margin-bottom: .65rem; }
+  .pb-angle-t { font-weight: 650; font-size: .86rem; margin-bottom: .2rem; }
+  .pb-why { color: var(--text-secondary); font-size: .74rem; margin-bottom: .45rem; }
+  .pb-ev { display: grid; grid-template-columns: 240px 1fr; gap: .8rem; align-items: start; background: var(--bg-primary); border-radius: 7px; padding: .55rem .65rem; margin-bottom: .45rem; }
+  @media (max-width: 700px) { .pb-ev { grid-template-columns: 1fr; } }
+  .pb-src { font-size: .7rem; color: var(--text-secondary); line-height: 1.45; }
+  .pb-src b { color: var(--text-primary); font-weight: 600; }
+  .pb-chips { display: flex; gap: .3rem; flex-wrap: wrap; margin-bottom: .45rem; }
+  .pb-btns { display: flex; gap: .35rem; flex-wrap: wrap; }
+  .pb-btn { font-size: .68rem; border: 1px solid var(--border); border-radius: 6px; padding: .12rem .45rem; background: var(--bg-primary); color: var(--text-primary); }
+  .pb-btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pb-notes { border: 1px solid var(--border); border-radius: 7px; padding: .5rem .55rem; background: var(--bg-primary); font-size: .72rem; line-height: 1.55; }
+  .pb-notes .m { background: rgba(52,199,89,.18); border-radius: 3px; padding: 0 .2rem; }
+  .pb-notes .u { background: rgba(255,159,10,.2); border-radius: 3px; padding: 0 .2rem; }
+  .pb-key { font-size: .65rem; color: var(--text-secondary); margin-top: .3rem; }
+  .pb-input { border: 1px solid var(--border); border-radius: 6px; padding: .45rem .55rem; font-size: .72rem; color: var(--text-secondary); background: var(--bg-primary); }
+  .pb-track { font-size: .72rem; padding: .3rem 0; border-bottom: 1px solid var(--border); }
+  .pb-track small { color: var(--text-secondary); display: block; font-size: .66rem; }
+  .pb-foot { padding: .55rem .9rem; border-top: 1px solid var(--border); font-size: .72rem; color: var(--text-secondary); background: var(--bg-primary); }
+  .pb-foot b { color: var(--text-primary); }
+
+  /* evidence charts */
+  .ch-title { font-size: .74rem; font-weight: 650; color: var(--text-primary); line-height: 1.3; }
+  .ch-sub { font-size: .66rem; color: var(--text-secondary); margin-bottom: .35rem; }
+  .ch-bars { display: flex; align-items: flex-end; gap: 6px; height: 64px; border-bottom: 1px solid var(--border); padding-top: 14px; }
+  .ch-bar { flex: 1; position: relative; background: var(--accent); opacity: .32; border-radius: 4px 4px 0 0; }
+  .ch-bar.now { opacity: 1; }
+  .ch-bar:hover { opacity: .55; }
+  .ch-bar.now:hover { opacity: .85; }
+  .ch-bar span { position: absolute; top: -14px; left: 0; right: 0; text-align: center; font-size: .64rem; font-weight: 650; color: var(--text-primary); }
+  .ch-xl { display: flex; gap: 6px; margin-top: 3px; }
+  .ch-xl span { flex: 1; text-align: center; font-size: .6rem; color: var(--text-secondary); white-space: nowrap; }
+  .ch-xl span.now { color: var(--text-primary); font-weight: 650; }
+  .ch-svg text { font-size: 9px; fill: var(--text-secondary); font-family: system-ui, sans-serif; }
+  .ch-svg text.v { fill: var(--text-primary); font-weight: 650; }
+  .ch-svg .grid { stroke: var(--border); stroke-width: 1; }
+  .ch-svg .line { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .ch-svg .dot { fill: var(--accent); }
+  .ch-svg .dot.now { stroke: var(--bg-primary); stroke-width: 2; }
+  .ch-cap { font-size: .6rem; color: var(--text-tertiary); margin-top: .25rem; }
+</style>
+
+<h2>Producer view: the board (charts labelled)</h2>
+<p class="subtitle">Each chart now says what it shows. Its title is the claim, every bar or point is labelled, and this game stands out.</p>
+<div class="pb-note">Mockup only. The result is real; the rest, including every chart value, is invented. Shown here as the NBL Now producer the morning after. Hover a bar or point for its value.</div>
+
+<div class="pb-frame">
+  <div class="pb-top">
+    <div><b>Wildcats 103 – 102 United</b> <span class="pb-meta">· Round 6 · board opened 13 h after full time</span></div>
+    <div>Viewing as <span class="pb-role">NBL Now producer ▾</span> <span class="pb-meta">(Social lead · ESPN broadcast · Club media · All)</span></div>
+  </div>
+
+  <div class="pb-grid">
+
+    <!-- LEFT: what leadership said -->
+    <div class="pb-col">
+      <div class="pb-h">From leadership</div>
+      <div class="pb-feed">Backed <b>Perth's late-game scoring against United</b><small>CEO, NBL · 52 min after full time</small></div>
+      <div class="pb-feed">"Can we tie this into Rookie Round next week?"<small>Marketing lead · on angle 1 · 1 h 10 min</small></div>
+      <div class="pb-feed hold">Officiating angle: <b>keep internal</b><small>GM · sign-off decision · 1 h 25 min</small></div>
+      <div class="pb-feed">"Is United's defence slipping since round 3?"<small>LK director · new question → looked into overnight</small></div>
+
+      <div class="pb-h gap">Active directives</div>
+      <div class="pb-feed">Build the Rookie Round story<small>marketing lead · expires 2 Nov</small></div>
+      <div class="pb-feed">Ignite Cup awareness, Wednesdays<small>GM · mandatory</small></div>
+    </div>
+
+    <!-- MIDDLE: angles for my show -->
+    <div class="pb-col">
+      <div class="pb-h">Angles for NBL Now <span style="text-transform:none;letter-spacing:0;font-weight:400">· 3 of 7, ranked for your show</span></div>
+
+      <div class="pb-angle">
+        <div class="pb-angle-t">Perth's late-game scoring against United <span class="pill p-ok">stats checked</span> <span class="pill p-lead">backed by CEO</span></div>
+        <div class="pb-why">Why your show: last week you ran "United are the team to beat", and this is the natural follow-up.</div>
+        <div class="pb-ev">
+          <div>
+            <div class="ch-title">Perth's 4th-quarter points against United</div>
+            <div class="ch-sub">Last 5 meetings · avg 22.5 in the previous 4</div>
+            <div class="ch-bars">
+              <div class="ch-bar" style="height:62%" title="Meeting 1: 21 pts"></div>
+              <div class="ch-bar" style="height:71%" title="Meeting 2: 24 pts"></div>
+              <div class="ch-bar" style="height:56%" title="Meeting 3: 19 pts"></div>
+              <div class="ch-bar" style="height:76%" title="Meeting 4: 26 pts"></div>
+              <div class="ch-bar now" style="height:100%" title="Tonight: 34 pts"><span>34</span></div>
+            </div>
+            <div class="ch-xl"><span>1</span><span>2</span><span>3</span><span>4</span><span class="now">Tonight</span></div>
+            <div class="ch-cap">Drawn from the same query that checked the claim</div>
+          </div>
+          <div class="pb-src"><b>Evidence:</b> Q4 play-by-play · commentary at 1:52:10 · r/NBL game thread (240 comments) · last 5 meetings in the stats store</div>
+        </div>
+        <div class="pb-chips"><span class="pill p-use">Social: using it</span><span class="pill p-use">ESPN: using it</span></div>
+        <div class="pb-btns"><span class="pb-btn pri">Using it</span><span class="pb-btn">Already had it</span><span class="pb-btn">Not for us</span><span class="pb-btn">Ask a follow-up</span></div>
+      </div>
+
+      <div class="pb-angle">
+        <div class="pb-angle-t">United's defence: slipping since round 3? <span class="pill p-ok">stats checked</span> <span class="pill p-lead">director's question</span></div>
+        <div class="pb-why">Looked into overnight: points conceded per 100 possessions rose in each of the last 3 games. Small sample, flagged.</div>
+        <div class="pb-ev">
+          <div>
+            <div class="ch-title">United's points conceded per 100 possessions</div>
+            <div class="ch-sub">Rounds 1–6 · lower is better · axis starts at 95</div>
+            <svg class="ch-svg" viewBox="0 -8 230 90" width="100%" role="img" aria-label="United points conceded per 100 possessions by round: R1 98, R2 96, R3 101, R4 107, R5 112, R6 115">
+              <line class="grid" x1="26" y1="62" x2="222" y2="62"/>
+              <line class="grid" x1="26" y1="14" x2="222" y2="14" stroke-dasharray="2 3"/>
+              <text x="22" y="65" text-anchor="end">95</text>
+              <text x="22" y="17" text-anchor="end">115</text>
+              <polyline class="line" points="36,54.8 72,59.6 108,47.6 144,33.2 180,21.2 210,14"/>
+              <circle class="dot" cx="36" cy="54.8" r="4"><title>R1: 98</title></circle>
+              <circle class="dot" cx="72" cy="59.6" r="4"><title>R2: 96</title></circle>
+              <circle class="dot" cx="108" cy="47.6" r="4"><title>R3: 101</title></circle>
+              <circle class="dot" cx="144" cy="33.2" r="4"><title>R4: 107</title></circle>
+              <circle class="dot" cx="180" cy="21.2" r="4"><title>R5: 112</title></circle>
+              <circle class="dot now" cx="210" cy="14" r="5.5"><title>R6 (tonight): 115</title></circle>
+              <text class="v" x="210" y="6" text-anchor="middle">115</text>
+              <text x="36" y="78" text-anchor="middle">R1</text>
+              <text x="72" y="78" text-anchor="middle">R2</text>
+              <text x="108" y="78" text-anchor="middle">R3</text>
+              <text x="144" y="78" text-anchor="middle">R4</text>
+              <text x="180" y="78" text-anchor="middle">R5</text>
+              <text x="210" y="78" text-anchor="middle" style="fill:var(--text-primary);font-weight:650">R6</text>
+            </svg>
+            <div class="ch-cap">A line, because it's a rate changing over time</div>
+          </div>
+          <div class="pb-src"><b>Evidence:</b> team box scores R1–R6 · two commentators disagree on the cause (round 4 and round 6 transcripts)</div>
+        </div>
+        <div class="pb-chips"><span class="pill p-use">no one using yet</span></div>
+        <div class="pb-btns"><span class="pb-btn pri">Using it</span><span class="pb-btn">Already had it</span><span class="pb-btn">Not for us</span><span class="pb-btn">Ask a follow-up</span></div>
+      </div>
+
+      <div class="pb-angle" style="opacity:.75">
+        <div class="pb-angle-t">Officiating in the final 2 minutes <span class="pill p-hold">kept internal by GM</span></div>
+        <div class="pb-why">Shown so you know it's been decided and don't run it.</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: my notes, asks, tracking -->
+    <div class="pb-col">
+      <div class="pb-h">Your notes for Monday</div>
+      <div class="pb-notes">
+        Open on <span class="m">United defence</span> debate<br>
+        Segment: <span class="u">Breakers road trip</span><br>
+        <span class="m">Perth comeback</span>, guest: ex-player?<br>
+        Rookie Round preview
+      </div>
+      <div class="pb-key"><span class="pill p-ok">green</span> matches an angle · <span class="pill p-hold">amber</span> nothing found yet: ask?</div>
+
+      <div class="pb-h gap">Ask the next run</div>
+      <div class="pb-input">e.g. Find something on the Breakers road trip that isn't the obvious record</div>
+
+      <div class="pb-h gap">You're tracking</div>
+      <div class="pb-track">Perth bench minutes <small>since R3 · updated each run</small></div>
+      <div class="pb-track">Rookie Round candidates <small>until 2 Nov</small></div>
+    </div>
+
+  </div>
+
+  <div class="pb-foot">Your NBL Now packet builds at <b>9:00 Mon</b> from everything marked <b>Using it</b>, with charts and sources. Changes after that go into the next run.</div>
+</div>

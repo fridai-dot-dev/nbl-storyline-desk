@@ -39,7 +39,7 @@ class Store:
                     run_type TEXT NOT NULL, game_id TEXT NOT NULL, as_of TEXT NOT NULL, route TEXT NOT NULL,
                     status TEXT NOT NULL DEFAULT 'pending', cost_usd REAL, duration_s REAL,
                     model_usage TEXT NOT NULL DEFAULT '{}', num_agents INTEGER,
-                    summary TEXT, started_at TEXT NOT NULL, finished_at TEXT
+                    summary TEXT, exec_summary TEXT, started_at TEXT NOT NULL, finished_at TEXT
                 );
                 CREATE TABLE IF NOT EXISTS findings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,6 +87,7 @@ class Store:
                 """
             )
             self._add_column_if_missing(con, "runs", "summary", "TEXT")
+            self._add_column_if_missing(con, "runs", "exec_summary", "TEXT")
             self._add_column_if_missing(con, "findings", "headline", "TEXT")
             self._add_column_if_missing(con, "findings", "followups", "TEXT NOT NULL DEFAULT '[]'")
 
@@ -127,6 +128,11 @@ class Store:
     def set_run_summary(self, run_id: int, text: str | None) -> None:
         with self._con() as con:
             con.execute("UPDATE runs SET summary = ? WHERE id = ?", (text, run_id))
+
+    def set_exec_summary(self, run_id: int, text: str | None) -> None:
+        """Store the judge's short, leadership-facing account of a run."""
+        with self._con() as con:
+            con.execute("UPDATE runs SET exec_summary = ? WHERE id = ?", (text, run_id))
 
     def update_run_ledger(self, run_id: int, *, cost_usd: float, model_usage: Any) -> None:
         """Update accounting without changing a completed run's outcome or timestamps."""

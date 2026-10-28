@@ -15,6 +15,16 @@ from .store import Store
 FOLLOWUP_TYPES = frozenset({"rarity", "on_pace", "comparison", "context"})
 
 
+def _judge_exec_summary(value: Any) -> str | None:
+    """Accept a plain summary while leaving the editorial contract to the judge prompt."""
+    if not isinstance(value, str):
+        return None
+    value = " ".join(value.split())
+    if not value or len(value.split()) > 70:
+        return None
+    return value
+
+
 def _words(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", text.lower()))
 
@@ -75,6 +85,8 @@ def score_findings(
         judged = {str(item.get("id")): item for item in judged if isinstance(item, dict)}
     if not isinstance(judged, dict):
         judged = {}
+    if (exec_summary := _judge_exec_summary(judged.get("exec_summary"))) is not None:
+        store.set_exec_summary(run_id, exec_summary)
     output = []
     for finding in findings:
         raw = judged.get(str(finding["id"]), judged.get(finding["id"], {}))

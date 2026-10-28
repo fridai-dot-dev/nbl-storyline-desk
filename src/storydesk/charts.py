@@ -35,19 +35,27 @@ def _display_label(label: str) -> str:
 
 def _axis_label(x: float, y: float, label: str, *, rotate: bool) -> str:
     if not rotate:
-        return _text(x, y, label)
+        return f'<text x="{x:.2f}" y="{y:.2f}" text-anchor="middle" data-axis-label="x">{escape(label)}</text>'
     return (
         f'<text x="{x:.2f}" y="{y:.2f}" text-anchor="end" '
-        f'transform="rotate(-45 {x:.2f} {y:.2f})">{escape(label)}</text>'
+        f'transform="rotate(-45 {x:.2f} {y:.2f})" data-axis-label="x">{escape(label)}</text>'
     )
+
+
+def _axis_layout(labels: list[str], width: int, left: int, right: int) -> tuple[bool, int]:
+    """Rotate only when a rough system-font width exceeds its category slot."""
+    slot = (width - left - right) / len(labels)
+    rotate = len(labels) > 2 and any(len(label) * 7 > slot for label in labels)
+    room = max(68, math.ceil(max(map(len, labels), default=0) * 5 + 24)) if rotate else 68
+    return rotate, room
 
 
 def render_bar_chart(title: str, labels: Iterable[str], values: Iterable[float], highlight_index: int, y_label: str | None = None) -> str:
     labels, values = list(labels), [float(value) for value in values]
     _validate(labels, values, highlight_index)
     display_labels = [_display_label(str(label)) for label in labels]
-    rotate_labels = any(len(label) > 8 for label in display_labels)
-    width, height, left, right, top, bottom = 680, 340, 56, 20, 38, 68
+    width, height, left, right, top = 680, 340, 56, 20, 38
+    rotate_labels, bottom = _axis_layout(display_labels, width, left, right)
     baseline = height - bottom
     max_value = max(max(values), 0.0)
     min_value = min(min(values), 0.0)
@@ -71,8 +79,8 @@ def render_bar_chart(title: str, labels: Iterable[str], values: Iterable[float],
     ylabel = _text(16, 22, y_label or "Value", anchor="start")
     return (
         f'<svg xmlns="{SVG_NS}" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
-        f'role="img" aria-label="{escape(title)}" data-baseline="{baseline:.2f}">'
-        f'<title>{escape(title)}</title><style>.bar{{fill:#2667a0}}.muted{{opacity:.28}}.highlight{{opacity:1}}'
+        f'role="img" aria-label="{escape(title)}" data-baseline="{baseline:.2f}" data-label-room="{bottom}">'
+        f'<title>{escape(title)}</title><style>.bar{{fill:#2667a0}}rect.muted{{opacity:.28}}.highlight{{opacity:1}}'
         f'text{{font:12px system-ui,sans-serif;fill:#475569}}.axis{{stroke:#94a3b8}}</style>'
         f'<line class="axis" x1="{left}" y1="{baseline:.2f}" x2="{width-right}" y2="{baseline:.2f}"/>{ylabel}'
         f'{"".join(marks)}{"".join(labels_svg)}</svg>'
@@ -83,8 +91,8 @@ def render_line_chart(title: str, labels: Iterable[str], values: Iterable[float]
     labels, values = list(labels), [float(value) for value in values]
     _validate(labels, values, highlight_index)
     display_labels = [_display_label(str(label)) for label in labels]
-    rotate_labels = any(len(label) > 8 for label in display_labels)
-    width, height, left, right, top, bottom = 680, 340, 56, 20, 38, 68
+    width, height, left, right, top = 680, 340, 56, 20, 38
+    rotate_labels, bottom = _axis_layout(display_labels, width, left, right)
     baseline = height - bottom
     minimum, maximum = min(values), max(values)
     span = max(maximum - minimum, 1.0)
@@ -101,9 +109,9 @@ def render_line_chart(title: str, labels: Iterable[str], values: Iterable[float]
     ylabel = _text(16, 22, y_label or "Value", anchor="start")
     return (
         f'<svg xmlns="{SVG_NS}" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
-        f'role="img" aria-label="{escape(title)}" data-baseline="{baseline:.2f}">'
+        f'role="img" aria-label="{escape(title)}" data-baseline="{baseline:.2f}" data-label-room="{bottom}">'
         f'<title>{escape(title)}</title><style>.line{{fill:none;stroke:#2667a0;stroke-width:3}}.point{{fill:#2667a0}}'
-        f'.muted{{opacity:.32}}.highlight{{opacity:1}}text{{font:12px system-ui,sans-serif;fill:#475569}}.axis{{stroke:#94a3b8}}</style>'
+        f'circle.muted{{opacity:.32}}.highlight{{opacity:1}}text{{font:12px system-ui,sans-serif;fill:#475569}}.axis{{stroke:#94a3b8}}</style>'
         f'<line class="axis" x1="{left}" y1="{baseline}" x2="{width-right}" y2="{baseline}"/>{ylabel}'
         f'<polyline class="line" points="{path}"/>{"".join(marks)}{"".join(labels_svg)}</svg>'
     )

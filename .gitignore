@@ -17,3 +17,7 @@ __pycache__/
 data/raw/
 *.duckdb
 *.duckdb.wal
+
+# Local run data (the published demo copies what it needs into site/)
+data/
+store/

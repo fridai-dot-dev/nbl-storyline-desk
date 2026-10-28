@@ -17,7 +17,28 @@ from .gates import apply_gates, coverage
 from .judge import score_findings
 from .prepare import prepare_run
 from .store import Store
+from .tool_log import tool_log_path
 from .tools import ToolContext, get_game, search_media, search_transcripts
+
+
+def ingest_tool_log(store: Store, run_id: int) -> int:
+    """Copy this run's SDK-hook spool into SQLite exactly once per event."""
+    path = tool_log_path(store.path, run_id)
+    if not path.exists():
+        return 0
+    events: list[dict[str, Any]] = []
+    with path.open(encoding="utf-8") as source:
+        for line in source:
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(event, dict) or not all(
+                isinstance(event.get(key), str) for key in ("event_id", "tool", "args_json")
+            ):
+                continue
+            events.append(event)
+    return store.ingest_tool_calls(run_id, events)
 
 
 def record_result(store: Store, run_id: int, result: Any, *, route: str, num_agents: int) -> None:
@@ -245,6 +266,7 @@ async def run_live(
         status = "error"
         raise
     finally:
+        ingest_tool_log(store, run_id)
         store.finish_run(
             run_id, status=status, cost_usd=agent_cost + judge_cost,
             duration_s=time.monotonic() - started, model_usage=model_usage,

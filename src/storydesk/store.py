@@ -79,6 +79,10 @@ class Store:
                     agent_id TEXT, agent_type TEXT, tool TEXT NOT NULL, args_json TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS ingested_tool_events (
+                    run_id INTEGER NOT NULL REFERENCES runs(id), event_id TEXT NOT NULL,
+                    PRIMARY KEY (run_id, event_id)
+                );
                 """
             )
 
@@ -240,6 +244,29 @@ class Store:
                 "INSERT INTO tool_calls (run_id, agent_id, agent_type, tool, args_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
                 (run_id, agent_id, agent_type, tool, args_json, _now()),
             )
+
+    def ingest_tool_calls(self, run_id: int, events: Iterable[dict[str, Any]]) -> int:
+        """Add each spooled event once, even if its log is read again."""
+        inserted = 0
+        with self._con() as con:
+            for event in events:
+                event_id = str(event["event_id"])
+                cursor = con.execute(
+                    "INSERT OR IGNORE INTO ingested_tool_events (run_id, event_id) VALUES (?, ?)",
+                    (run_id, event_id),
+                )
+                if cursor.rowcount == 0:
+                    continue
+                con.execute(
+                    "INSERT INTO tool_calls (run_id, agent_id, agent_type, tool, args_json, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        run_id, event.get("agent_id"), event.get("agent_type"), event["tool"],
+                        event["args_json"], _now(),
+                    ),
+                )
+                inserted += 1
+        return inserted
 
     def create_tracking_table(self, name: str, columns: dict[str, str]) -> str:
         table = f"track_{name}"

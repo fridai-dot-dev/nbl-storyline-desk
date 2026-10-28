@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from typing import Any
 
 from claude_agent_sdk import AgentDefinition, ClaudeAgentOptions, HookMatcher
 
-from .store import Store
+from .tool_log import append_tool_log
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -78,9 +77,10 @@ def _tool_logging_hook(store_path: str | Path, run_id: int):
     async def callback(input_data: Any, tool_use_id: str | None = None, context: Any = None) -> dict[str, Any]:
         tool = _value(input_data, "tool_name") or _value(input_data, "tool") or "unknown_tool"
         args = _value(input_data, "tool_input") or _value(input_data, "input") or {}
-        Store(store_path).log_tool_call(
-            run_id, _value(input_data, "agent_id"), _value(input_data, "agent_type"),
-            str(tool), json.dumps(args, default=str),
+        append_tool_log(
+            store_path, run_id, agent_id=_value(input_data, "agent_id"),
+            agent_type=_value(input_data, "agent_type"), tool=tool, args=args,
+            event_id=tool_use_id,
         )
         return {}
     return callback
@@ -89,9 +89,10 @@ def _tool_logging_hook(store_path: str | Path, run_id: int):
 def _lifecycle_logging_hook(store_path: str | Path, run_id: int):
     async def callback(input_data: Any, tool_use_id: str | None = None, context: Any = None) -> dict[str, Any]:
         event = _value(input_data, "hook_event_name", "SubagentLifecycle")
-        Store(store_path).log_tool_call(
-            run_id, _value(input_data, "agent_id"), _value(input_data, "agent_type"),
-            f"lifecycle__{event}", "{}",
+        append_tool_log(
+            store_path, run_id, agent_id=_value(input_data, "agent_id"),
+            agent_type=_value(input_data, "agent_type"), tool=f"lifecycle__{event}", args={},
+            event_id=tool_use_id,
         )
         return {}
     return callback

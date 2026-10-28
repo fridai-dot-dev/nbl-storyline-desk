@@ -18,6 +18,7 @@ from .store import Store
 
 SENSITIVE_CATEGORIES = {"conflict", "injury", "officiating", "legal", "fan_quote"}
 FINDING_KINDS = {"checked", "attributed", "qualitative", "nothing_found"}
+SOURCE_TYPES = ("stats", "commentary", "media", "fans", "press", "directives")
 _HANDLE = re.compile(r"(?:\bu/[A-Za-z0-9_-]+|@[A-Za-z0-9_-]+)")
 
 
@@ -225,6 +226,8 @@ def write_finding(
 ) -> int:
     if kind not in FINDING_KINDS:
         raise ToolError(f"unknown finding kind: {kind}")
+    if source_type not in SOURCE_TYPES:
+        raise ToolError(f"unknown source type: {source_type}")
     if not claim or not str(claim).strip():
         raise ToolError("a finding needs a claim")
     if kind == "checked" and (number is None or not query):
@@ -243,6 +246,8 @@ def write_finding(
     for item in evidence:
         if not item.get("source_type") or not item.get("url") or not item.get("ref"):
             raise ToolError("evidence needs source_type, url and ref")
+        if item["source_type"] not in SOURCE_TYPES:
+            raise ToolError(f"unknown evidence source type: {item['source_type']}")
     if kind == "attributed" and not any(item.get("quote") for item in evidence):
         raise ToolError("attributed findings need a quoted source")
     if chart is not None:

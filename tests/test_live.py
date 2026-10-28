@@ -28,8 +28,9 @@ def con():
 def test_d13_every_specialist_can_call_a_tool(con):
     run = con.execute("SELECT id FROM runs WHERE run_type = 'smoke' ORDER BY id DESC LIMIT 1").fetchone()
     assert run, "no smoke run recorded"
-    rows = con.execute("SELECT DISTINCT agent_type FROM tool_calls WHERE run_id = ? AND agent_id IS NOT NULL",
-                       (run["id"],)).fetchall()
+    # Only real desk tool calls count; lifecycle events (SubagentStart/Stop) must not satisfy this.
+    rows = con.execute("SELECT DISTINCT agent_type FROM tool_calls WHERE run_id = ? AND agent_id IS NOT NULL "
+                       "AND tool LIKE 'mcp__desk__%'", (run["id"],)).fetchall()
     assert SPECIALISTS <= {r["agent_type"] for r in rows}
 
 

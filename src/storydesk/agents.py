@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -134,7 +135,8 @@ def build_options(
 
 def build_prompt(
     run_type: str, *, digest_dir: str | Path, question: str | None = None,
-    anchor_finding_id: int | None = None,
+    anchor_finding_id: int | None = None, run_id: int | None = None,
+    game_id: str | None = None, as_of: str | None = None,
 ) -> str:
     if run_type not in RUN_TYPES:
         raise ValueError(f"unknown run type: {run_type}")
@@ -143,10 +145,27 @@ def build_prompt(
     if directory.exists():
         for source in sorted(directory.glob("*.md")):
             digest_parts.append(f"## {source.name}\n{source.read_text(encoding='utf-8').strip()}")
-    text = "\n\n".join([
+    parts = []
+    if run_id is not None and game_id is not None and as_of is not None:
+        facts = [
+            "Run facts:",
+            f"- Run ID: {run_id}",
+            f"- Match UUID: {game_id}",
+            f"- Exact as_of cutoff: {as_of}",
+        ]
+        if run_type == "post_game":
+            deadline = datetime.fromisoformat(as_of.replace("Z", "+00:00")) + timedelta(minutes=30)
+            facts.append(f"- Briefing deadline: {deadline.isoformat()} (30 minutes after the cutoff)")
+        facts.append(
+            "- Copy these facts verbatim into every specialist task. Never invent a run ID or match UUID, "
+            "and never assume the cutoff is tip-off."
+        )
+        parts.append("\n".join(facts))
+    parts.extend([
         "Run brief:\n" + _prompt(f"runs/{run_type}"),
         "Starting-set digest:\n" + ("\n\n".join(digest_parts) or "No digest files were prepared."),
     ])
+    text = "\n\n".join(parts)
     if run_type == "follow_up":
         text += f"\n\nAnchor finding ID: {anchor_finding_id}\nQuestion: {question or ''}"
     return text

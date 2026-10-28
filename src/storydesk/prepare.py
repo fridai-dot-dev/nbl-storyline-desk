@@ -132,20 +132,25 @@ def prepare_run(
     con = as_of_connection(stats_db, as_of)
     try:
         form_rows = con.execute(
-            """SELECT match_id, name, opp_name, score, opp_score FROM box_team
-               WHERE name IN (?, ?) ORDER BY try_cast(match_time AS TIMESTAMP) DESC LIMIT 12""",
+            """SELECT b.match_id, CAST(try_cast(r.match_time_utc AS TIMESTAMP) AS DATE), r.season,
+                      b.name, b.opp_name, b.score, b.opp_score
+               FROM box_team AS b JOIN results AS r ON b.match_id = r.match_id
+               WHERE b.name IN (?, ?)
+               ORDER BY try_cast(r.match_time_utc AS TIMESTAMP) DESC LIMIT 12""",
             [game["home_team"], game["away_team"]],
         ).fetchall()
         history_rows = con.execute(
-            """SELECT match_id, name, p1_score, p2_score, p3_score, p4_score, score
-               FROM box_team WHERE name IN (?, ?) AND opp_name IN (?, ?)
-               ORDER BY try_cast(match_time AS TIMESTAMP) DESC LIMIT 20""",
+            """SELECT b.match_id, CAST(try_cast(r.match_time_utc AS TIMESTAMP) AS DATE), r.season,
+                      b.name, b.p1_score, b.p2_score, b.p3_score, b.p4_score, b.score
+               FROM box_team AS b JOIN results AS r ON b.match_id = r.match_id
+               WHERE b.name IN (?, ?) AND b.opp_name IN (?, ?)
+               ORDER BY try_cast(r.match_time_utc AS TIMESTAMP) DESC LIMIT 20""",
             [game["home_team"], game["away_team"], game["home_team"], game["away_team"]],
         ).fetchall()
     finally:
         con.close()
-    _write(out, "form.md", "Recent form", _rows_markdown(["match", "team", "opponent", "points", "opponent points"], form_rows))
-    _write(out, "history.md", "Head-to-head and quarter history", _rows_markdown(["match", "team", "Q1", "Q2", "Q3", "Q4", "points"], history_rows))
+    _write(out, "form.md", "Recent form", _rows_markdown(["match", "date", "season", "team", "opponent", "points", "opponent points"], form_rows))
+    _write(out, "history.md", "Head-to-head and quarter history", _rows_markdown(["match", "date", "season", "team", "Q1", "Q2", "Q3", "Q4", "points"], history_rows))
 
     query = f"{game['home_team']} {game['away_team']}"
     transcripts = search_transcripts(context, query, limit=30)

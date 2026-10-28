@@ -214,7 +214,10 @@ async def run_live(
             corpus_dir=corpus_dir, digest_dir=digest, question=question,
             anchor_finding_id=anchor_finding_id,
         )
-        prompt = build_prompt(run_type, digest_dir=digest, question=question, anchor_finding_id=anchor_finding_id)
+        prompt = build_prompt(
+            run_type, digest_dir=digest, question=question, anchor_finding_id=anchor_finding_id,
+            run_id=run_id, game_id=game_id, as_of=as_of,
+        )
         factory = client_factory or ClaudeSDKClient
         agent_success = False
         missing: list[str] = []

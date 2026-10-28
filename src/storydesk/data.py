@@ -109,9 +109,16 @@ def build_stats_db(
     try:
         for table in ("raw_results", "raw_box_team", "raw_box_player", "raw_pbp", "match_ends"):
             con.execute(f"DROP TABLE IF EXISTS {table}")
-        con.execute("CREATE TABLE raw_results AS SELECT * FROM read_csv_auto(?, nullstr='NA')", [str(results_csv)])
-        con.execute("CREATE TABLE raw_box_team AS SELECT * FROM read_csv_auto(?, nullstr='NA')", [str(box_team_csv)])
-        con.execute("CREATE TABLE raw_box_player AS SELECT * FROM read_csv_auto(?, nullstr='NA')", [str(box_player_csv)])
+        con.execute("CREATE TABLE raw_results AS SELECT * FROM read_csv_auto(?, nullstr='NA', types={'match_id': 'VARCHAR'}, sample_size=-1)", [str(results_csv)])
+        # nblR's box_team carries a few near-identical rescrapes of the same match and team (one with
+        # fouls zeroed); keep one row per team per match, preferring the one with real foul counts.
+        con.execute(
+            "CREATE TABLE raw_box_team AS SELECT DISTINCT ON (match_id, name) * "
+            "FROM read_csv_auto(?, nullstr='NA', types={'match_id': 'VARCHAR'}, sample_size=-1) "
+            "ORDER BY match_id, name, fouls DESC NULLS LAST",
+            [str(box_team_csv)],
+        )
+        con.execute("CREATE TABLE raw_box_player AS SELECT * FROM read_csv_auto(?, nullstr='NA', types={'match_id': 'VARCHAR'}, sample_size=-1)", [str(box_player_csv)])
         con.execute(
             """CREATE TABLE raw_pbp (
                 match_id VARCHAR, action_id BIGINT, period INTEGER, period_type VARCHAR,

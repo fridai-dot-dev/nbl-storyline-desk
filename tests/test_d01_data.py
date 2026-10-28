@@ -82,3 +82,58 @@ def test_get_game_hides_result_before_tip_off(pre_ctx, post_ctx):
     assert after["status"] == "complete"
     assert (after["home_score"], after["away_score"]) == (95, 97)
     assert after["quarters"] == {"home": [23, 25, 22, 25], "away": [25, 24, 26, 22]}
+
+
+def test_build_handles_numeric_and_uuid_match_ids(tmp_path):
+    """Real nblR files mix numeric FIBA ids (older seasons) with UUIDs (newer ones)."""
+    import csv
+
+    from conftest import FIX
+    from storydesk.data import build_stats_db
+
+    rows = list(csv.reader(open(FIX / "box_player.csv", newline="", encoding="utf-8")))
+    header, body = rows[0], rows[1:]
+    old = list(body[0])
+    old[header.index("match_id")] = "2155555"
+    old[header.index("season")] = "2016-2017"
+    mixed = tmp_path / "box_player.csv"
+    with open(mixed, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        w.writerows([old] * 25000 + body)  # UUIDs first appear past DuckDB's ~20k-row sniffing sample, as in the real file
+
+    db = tmp_path / "mixed.duckdb"
+    build_stats_db(db, results_csv=FIX / "results.csv", box_team_csv=FIX / "box_team.csv",
+                   box_player_csv=mixed, match_json_paths=[FIX / "match_opener.json"])
+    assert db.exists()
+
+
+def test_box_team_rescrapes_are_deduplicated(tmp_path, store):
+    """nblR's box_team has a few near-identical rescrapes (same match and team); count each team once."""
+    import csv
+
+    from conftest import FIX, OPENER, POST
+    from storydesk.data import build_stats_db
+    from storydesk.tools import ToolContext, stats_sql
+
+    rows = list(csv.reader(open(FIX / "box_team.csv", newline="", encoding="utf-8")))
+    header, body = rows[0], rows[1:]
+    i_match, i_fouls = header.index("match_id"), header.index("fouls")
+    victim = next(r for r in body if r[i_match] == OPENER)
+    rescrape = list(victim)
+    rescrape[i_fouls] = "0"
+    path = tmp_path / "box_team.csv"
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        w.writerows(body + [rescrape])
+
+    db = tmp_path / "dedupe.duckdb"
+    build_stats_db(db, results_csv=FIX / "results.csv", box_team_csv=path, box_player_csv=FIX / "box_player.csv",
+                   match_json_paths=[FIX / "match_opener.json"])
+    ctx = ToolContext(stats_db=db, store=store, corpus_dir=FIX / "corpus",
+                      run_id=store.start_run("post_game", OPENER, POST, route="test"), as_of=POST)
+    out = stats_sql(ctx, f"SELECT count(*), max(fouls) FROM box_team WHERE match_id = '{OPENER}' AND name = '{victim[header.index('name')]}'")
+    n, fouls = out["rows"][0]
+    assert n == 1
+    assert fouls == int(victim[i_fouls])  # the real foul count wins over the zeroed rescrape

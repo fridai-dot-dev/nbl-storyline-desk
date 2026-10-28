@@ -53,9 +53,9 @@ def record_result(store: Store, run_id: int, result: Any, *, route: str, num_age
     if result is None:
         store.finish_run(run_id, status="timeout", cost_usd=None, duration_s=None, model_usage={}, num_agents=num_agents, route=route)
         return
-    if isinstance(summary := getattr(result, "result", None), str) and summary.strip():
-        store.set_run_summary(run_id, summary.strip())
     success = not bool(getattr(result, "is_error", False)) and getattr(result, "subtype", "") == "success"
+    if success and isinstance(summary := getattr(result, "result", None), str) and summary.strip():
+        store.set_run_summary(run_id, summary.strip())
     status = "complete" if success else ("timeout" if getattr(result, "terminal_reason", None) == "timeout" else "error")
     duration_ms = getattr(result, "duration_ms", None)
     store.finish_run(
@@ -248,9 +248,10 @@ async def run_live(
         agent_cost = float(getattr(result, "total_cost_usd", 0.0) or 0.0)
         usage = getattr(result, "model_usage", None)
         model_usage = dict(usage) if isinstance(usage, dict) else {}
-        if record_summary and isinstance(summary := getattr(result, "result", None), str) and summary.strip():
+        success = not bool(getattr(result, "is_error", False)) and getattr(result, "subtype", "") == "success"
+        if record_summary and success and isinstance(summary := getattr(result, "result", None), str) and summary.strip():
             store.set_run_summary(run_id, summary.strip())
-        return not bool(getattr(result, "is_error", False)) and getattr(result, "subtype", "") == "success"
+        return success
 
     try:
         digest = prepare_run(

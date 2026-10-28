@@ -15,3 +15,7 @@ The dataset begins in 2015-16. Any record, first, last, best, worst, highest, lo
 Aim for about 5–8 findings in a pre-game run, 6–10 in a post-game run, 2–4 in a supplemental run, and 1–3 in a follow-up. Tag the real audience: leadership, producers, social, broadcast, or partners. Prefer a small set that can change an editorial decision over padding the count.
 
 Every specialist task message must carry the run cutoff, the game and run IDs, and the relevant slice of the prepared digest and prior-finding context. The lead must copy that material into the task message itself because a specialist sees only its own task message. Include the relevant prior finding IDs, claims, evidence and lineage when extending earlier work; do not merely point the specialist to a file or assume it can see the lead's context.
+
+## One checked number per finding
+
+Code rechecks exactly one number per checked finding, its `number`. Supporting figures in the claim must either come from the same query row or be clearly marked as context. Any record or milestone claim, such as "fewest minutes for a 30-point game since at least 2015-16", "first since" or "longest streak", is its own checked finding. Its `number` is the record value and its SQL proves the record. Never bury a record inside another finding's claim. If it matters enough to say, it matters enough to recheck.

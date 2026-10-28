@@ -9,7 +9,6 @@ from typing import Any
 
 from .charts import render_bar_chart, render_line_chart
 from .data import as_of_connection
-from .gates import visible_findings
 from .sqlsafe import validate_safe_sql
 from .store import Store
 from .tools import ToolContext, get_game
@@ -42,6 +41,52 @@ _PARENTHETICAL = re.compile(r"\s*\([^()]*\)")
 _META_SENTENCE = re.compile(
     r"^(?:this )?answers? (?:the )?(?:producer )?(?:follow[- ]up )?question\b", re.IGNORECASE,
 )
+_PRIMARY_RUN_TYPES = ("pre_game", "post_game", "supplemental")
+_PUBLISHED_FINDING_STATUSES = {"shipped", "held"}
+
+
+def _published_content(store: Store, game_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Return the complete, current runs and findings allowed into a site build."""
+    all_runs = store.game_runs(game_id)
+    all_findings = store.game_findings(game_id, include_dropped=True)
+    published_run_ids: set[int] = set()
+
+    for run_type in _PRIMARY_RUN_TYPES:
+        complete = [run for run in all_runs if run["run_type"] == run_type and run["status"] == "complete"]
+        if complete:
+            published_run_ids.add(complete[-1]["id"])
+
+    anchors_by_run: dict[int, set[int]] = {}
+    for request in store.requests():
+        if request["answered_run_id"] is not None:
+            anchors_by_run.setdefault(request["answered_run_id"], set()).add(request["anchor_finding_id"])
+    for finding in all_findings:
+        if finding.get("parent_id") is not None and finding["run_id"] not in anchors_by_run:
+            anchors_by_run.setdefault(finding["run_id"], set()).add(finding["parent_id"])
+
+    follow_ups = [
+        run for run in all_runs if run["run_type"] == "follow_up" and run["status"] == "complete"
+    ]
+    while True:
+        published_finding_ids = {
+            finding["id"] for finding in all_findings
+            if finding["run_id"] in published_run_ids and finding["status"] in _PUBLISHED_FINDING_STATUSES
+        }
+        newly_published = [
+            run["id"] for run in follow_ups
+            if run["id"] not in published_run_ids
+            and anchors_by_run.get(run["id"], set()) & published_finding_ids
+        ]
+        if not newly_published:
+            break
+        published_run_ids.update(newly_published)
+
+    runs = [run for run in all_runs if run["id"] in published_run_ids]
+    findings = [
+        finding for finding in all_findings
+        if finding["run_id"] in published_run_ids and finding["status"] in _PUBLISHED_FINDING_STATUSES
+    ]
+    return runs, findings
 
 
 def headline_for(finding: dict[str, Any]) -> str:
@@ -116,7 +161,9 @@ def _finding_card(finding: dict[str, Any], href: str) -> str:
     )
 
 
-def _finding_page(store: Store, stats_db: str | Path, finding: dict[str, Any], pages: set[int]) -> str:
+def _finding_page(
+    store: Store, stats_db: str | Path, finding: dict[str, Any], pages: set[int], published_run_ids: set[int],
+) -> str:
     run = store.get_run(finding["run_id"])
     chart = _chart(stats_db, finding, run["as_of"])
     evidence = store.evidence(finding["id"])
@@ -138,7 +185,10 @@ def _finding_page(store: Store, stats_db: str | Path, finding: dict[str, Any], p
         if child.get("parent_id") == finding["id"] and child["id"] in pages:
             trail.append(f"<li>Leads to <a href=\"{child['id']}.html\">{escape(headline_for(child), quote=False)}</a></li>")
     trail_html = "<ul>" + "".join(trail) + "</ul>" if trail else "<p class=\"muted\">No linked finding yet.</p>"
-    requests = store.requests_for_anchor(finding["id"])
+    requests = [
+        request for request in store.requests_for_anchor(finding["id"])
+        if request["answered_run_id"] is None or request["answered_run_id"] in published_run_ids
+    ]
     requests_html = "".join(
         f"<div class=\"card\"><strong>{escape(request['question'], quote=False)}</strong> · asked by {escape(request['asked_by'], quote=False)}"
         + (f"<br>Answered in run {request['answered_run_id']}." if request["answered_run_id"] else "") + "</div>"
@@ -157,24 +207,37 @@ def _finding_page(store: Store, stats_db: str | Path, finding: dict[str, Any], p
 def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_id: str) -> list[Path]:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    runs = [run for run in store.game_runs(game_id) if run["run_type"] != "smoke"]
-    findings = [item for item in store.game_findings(game_id) if item["status"] in {"shipped", "held"}]
-    findings = [item for item in findings if item["run_id"] in {run["id"] for run in runs}]
+    runs, findings = _published_content(store, game_id)
+    published_run_ids = {run["id"] for run in runs}
     pages = {item["id"] for item in findings}
+    findings_dir = out / "findings"
+    if findings_dir.exists():
+        for page in findings_dir.glob("*.html"):
+            page.unlink()
     output: list[Path] = []
     for finding in findings:
-        output.append(_write(out / "findings" / f"{finding['id']}.html", headline_for(finding), _finding_page(store, stats_db, finding, pages)))
+        output.append(_write(
+            out / "findings" / f"{finding['id']}.html", headline_for(finding),
+            _finding_page(store, stats_db, finding, pages, published_run_ids),
+        ))
 
-    pre_runs = [run for run in runs if run["run_type"] == "pre_game"]
-    pre_findings = visible_findings(store, pre_runs[-1]["id"], "internal") if pre_runs else []
+    pre = next((run for run in runs if run["run_type"] == "pre_game"), None)
+    pre_findings = [item for item in findings if pre and item["run_id"] == pre["id"]]
     output.append(_write(
         out / "pre-game.html", "Pre-game briefing",
         "<p><a href=\"index.html\">Storyline Desk</a></p><h1>Pre-game briefing</h1>"
         + ("".join(_finding_card(item, f"findings/{item['id']}.html") for item in pre_findings) or "<p class=\"muted\">No pre-game findings yet.</p>"),
     ))
 
-    post_runs = [run for run in runs if run["run_type"] == "post_game"]
-    post = post_runs[-1] if post_runs else None
+    post = next((run for run in runs if run["run_type"] == "post_game"), None)
+    supplemental = next((run for run in runs if run["run_type"] == "supplemental"), None)
+    supplemental_findings = [item for item in findings if supplemental and item["run_id"] == supplemental["id"]]
+    addendum = (
+        "<h2>Addendum: what's new since the briefing</h2>"
+        + ("".join(_finding_card(item, f"../findings/{item['id']}.html") for item in supplemental_findings)
+           or "<p class=\"muted\">No supplemental findings yet.</p>")
+        if supplemental else ""
+    )
     if post:
         ctx = ToolContext(stats_db=stats_db, store=store, corpus_dir="", run_id=post["id"], as_of=post["as_of"])
         game = get_game(ctx, game_id)
@@ -185,12 +248,12 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
             for side in ("home", "away")
             if quarters.get(side)
         )
-        post_findings = visible_findings(store, post["id"], "internal")
+        post_findings = [item for item in findings if item["run_id"] == post["id"]]
         moved = [item for item in post_findings if item.get("parent_id") in {pre['id'] for pre in pre_findings}]
         pulse = [item for item in post_findings if item["source_type"] in {"commentary", "fans"}]
         directives = store.directives()
         minutes = int(round((post.get("duration_s") or 0) / 60))
-        feedback = store.feedback()
+        feedback = [item for item in store.feedback() if item["finding_id"] in pages]
         email = (
             "<p><a href=\"../index.html\">Storyline Desk</a></p><h1>Post-game leadership briefing</h1>"
             f"<section class=\"card\"><h2>{score}</h2><p>Briefing ready {minutes} min after full time · {_cost_label(post)}</p></section>"
@@ -199,13 +262,14 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
             "<h2>What moved since pre-game</h2>" + ("".join(_finding_card(item, f"../findings/{item['id']}.html") for item in moved) or "<p class=\"muted\">No linked pre-game movement recorded.</p>")
             + "<h2>In-game pulse</h2>" + ("".join(_finding_card(item, f"../findings/{item['id']}.html") for item in pulse) or "<p class=\"muted\">No in-game pulse finding.</p>")
             + "<h2>Angles for the next 48 hours</h2>" + "".join(_finding_card(item, f"../findings/{item['id']}.html") for item in post_findings)
+            + addendum
             + "<h2>Directives</h2>" + ("".join(f"<div class=\"card\">{escape(item['text'])}</div>" for item in directives) or "<p class=\"muted\">No active directives.</p>")
             + "<p class=\"muted\">Feedback shown here is simulated.</p>" + "".join(
                 f"<p><em>simulated</em> {escape(item['role'])}: {escape(item['action'])}</p>" for item in feedback if item["simulated"]
             )
         )
     else:
-        email = "<p><a href=\"../index.html\">Storyline Desk</a></p><h1>Post-game leadership briefing</h1><p class=\"muted\">No post-game run yet.</p>"
+        email = "<p><a href=\"../index.html\">Storyline Desk</a></p><h1>Post-game leadership briefing</h1><p class=\"muted\">No post-game run yet.</p>" + addendum
     output.append(_write(out / "outbox" / "post-game-email.html", "Post-game leadership briefing", email))
 
     links = "".join(f"<li><a href=\"findings/{finding['id']}.html\">{escape(headline_for(finding), quote=False)}</a></li>" for finding in findings)

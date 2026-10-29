@@ -304,7 +304,7 @@ def test_r1_row_19_agora_light_tokens_and_fonts_are_exact(r1_site):
     }
     for name, value in expected.items():
         assert f"{name}:{value}" in css, name
-    assert "inter" in css and "source serif 4" in css and "ui-monospace" in css
+    assert "inter" in css and "sourceserif4" in css and "ui-monospace" in css
 
 
 def test_r1_row_20_dark_css_uses_charcoal_and_white_for_all_text(r1_site):

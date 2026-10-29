@@ -8,6 +8,7 @@ dependencies = [
     "mcp>=1.10",
     "duckdb>=1.1",
     "jinja2>=3.1",
+    "tzdata>=2024.1",  # zoneinfo needs it on Windows, where there is no system tz database
 ]
 
 [project.optional-dependencies]

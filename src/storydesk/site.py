@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from base64 import b64encode
+from datetime import datetime, timedelta, timezone
 from html import escape
 import os
 from pathlib import Path
 import re
 from typing import Any
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 from .charts import render_bar_chart, render_line_chart, render_test_result_chart
 from .data import as_of_connection
@@ -20,12 +22,13 @@ from .tools import ToolContext, get_game
 
 AGORA_CSS = """
 :root { color-scheme:light dark; --text:#1a1a1a; --muted:#6b6b6b; --bg:#fff; --surface:#f5f5f5; --border:#d9d9d9; --card:#fff; --chart-ink:#1f3a5f; --positive:#3d7a4a; --negative:#a04545; --neutral:#8a8a8a; --sensitive-text:#9a4a00; --sensitive-bg:#fdf0e1; --sensitive-border:#e3a96f; --email-bg:#fff; --email-text:#1a1a1a; }
-@media (prefers-color-scheme: dark) { :root { --bg:#262626; --card:#303030; --surface:#303030; --border:#444; --text:#fff; --muted:#fff; --chart-ink:#8fb3d9; --positive:#91c99d; --negative:#f0a0a0; --neutral:#fff; --sensitive-text:#fff; --sensitive-bg:#5a3415; --sensitive-border:#e3a96f; } }
+@media (prefers-color-scheme: dark) { :root { --bg:#262626; --card:#303030; --surface:#303030; --border:#444; --text:#fff; --muted:#fff; --chart-ink:#8fb3d9; --positive:#91c99d; --negative:#f0a0a0; --neutral:#fff; --sensitive-text:#fff; --sensitive-bg:#5a3415; --sensitive-border:#e3a96f; }
+  .inbox,.mail { --text:#1a1a1a; --muted:#6b6b6b; --bg:#fff; --surface:#f5f5f5; --border:#d9d9d9; --card:#fff; --chart-ink:#1f3a5f; --positive:#3d7a4a; --negative:#a04545; --neutral:#8a8a8a; --sensitive-text:#9a4a00; --sensitive-bg:#fdf0e1; --sensitive-border:#e3a96f; } }
 * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter,system-ui,sans-serif; } main { max-width:1240px; margin:auto; padding:24px 16px 48px; } h1,h2,h3,.serif,.subj { font-family:"Source Serif 4",Georgia,serif; } code,.data { font-family:ui-monospace,SFMono-Regular,monospace; } a { color:var(--chart-ink); } .muted { color:var(--muted); }
-.inbox,.mail { background:var(--email-bg); color:var(--email-text); border:1px solid #cfcfcf; } .inbox { margin-bottom:12px; } .row { display:grid; grid-template-columns:70px 150px 1fr 90px; gap:10px; padding:9px 14px; border-top:1px solid #cfcfcf; font-size:13px; align-items:baseline; } .row:first-child { border-top:0; } .row .tag,.row .t { color:#5c5c5c; font-size:11px; } .row .s { font-weight:600; }
-.internal-note { margin:6px 0 16px; font-size:13px; } .cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; align-items:start; } .head { padding:12px 16px; border-bottom:1px solid #cfcfcf; font-size:12px; line-height:1.6; } .subj { font-size:19px; font-weight:600; margin:2px 0 4px; line-height:1.3; } .body { padding:16px; max-width:600px; font-size:14px; line-height:1.55; } .body h4 { font-family:Inter,system-ui,sans-serif; font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin:22px 0 8px; } .lead { font-size:15px; margin-top:0; }
+.inbox,.mail { background:var(--email-bg); color:var(--email-text); border:1px solid #cfcfcf; } .inbox { margin-bottom:12px; } .row { display:grid; grid-template-columns:70px 150px 1fr 90px; gap:10px; padding:9px 14px; border-top:1px solid #cfcfcf; font-size:13px; align-items:baseline; } .row:first-child { border-top:0; } .row .tag,.row .t { color:#5c5c5c; font-size:11px; } .row .s { font-weight:600; } .row .preview { color:#5c5c5c; font-weight:400; }
+.internal-note { margin:6px 0 10px; font-size:13px; } .honesty-note { margin:0 0 16px; padding:2px 0 2px 12px; border-left:3px solid var(--chart-ink); font-size:13px; } .cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; align-items:start; } .head { padding:12px 16px; border-bottom:1px solid #cfcfcf; font-size:12px; line-height:1.6; } .subj { font-size:19px; font-weight:600; margin:2px 0 4px; line-height:1.3; } .body { padding:16px; max-width:600px; font-size:14px; line-height:1.55; } .body h4 { font-family:Inter,system-ui,sans-serif; font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin:22px 0 8px; } .lead { font-size:15px; margin-top:0; }
 .item { border:1px solid #cfcfcf; background:#f3f3f3; padding:10px 12px; margin-bottom:8px; font-size:13px; } .item.sensitive { border-left:3px solid var(--sensitive-border); } .h { display:block; font-size:14px; margin-bottom:3px; } .premise { margin:0 0 5px; } .test,.status { font-size:12px; margin-top:5px; } .stance { font-size:12px; margin-top:6px; padding-top:5px; border-top:1px solid #cfcfcf; } .stance a { margin-right:8px; } .full-story { font-size:12px; margin-top:6px; } .sensitive-tag { color:var(--sensitive-text); background:var(--sensitive-bg); border:1px solid var(--sensitive-border); font-size:10px; font-weight:600; letter-spacing:.04em; padding:0 5px; text-transform:uppercase; } .chart { display:block; width:100%; border:1px solid #cfcfcf; background:#fff; padding:5px; margin:7px 0; } .reply-box { border:2px solid #1a1a1a; padding:10px 12px; margin-top:16px; font-size:13px; } .chip { display:inline-block; border:1px dashed #6b6b6b; padding:1px 7px; margin:3px 4px 0 0; font-size:12px; } .foot,.reply-thread { border-top:1px solid #cfcfcf; padding:10px 16px; font-size:11px; } .reply-thread { font-size:13px; } .simulated { border:1px solid #cfcfcf; padding:0 4px; font-size:10px; }
-.board { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px; } .angle { border:1px solid var(--border); border-radius:8px; padding:12px; margin:10px 0; } .detail-header,.detail-grid { background:var(--card); border:1px solid var(--border); } .detail-header { border-radius:12px 12px 0 0; padding:16px; } .detail-grid { border-top:0; border-radius:0 0 12px 12px; display:grid; grid-template-columns:minmax(0,1fr) 300px; } .detail-main,.detail-side { padding:16px; } .detail-side { border-left:1px solid var(--border); } .breadcrumb,.run-cost,.source-row small { color:var(--muted); font-size:12px; } .stance-record { margin:4px 0; font-size:13px; } .source-row { border-top:1px solid var(--border); padding:8px 0; } .quote { border-left:3px solid var(--chart-ink); padding-left:10px; margin:10px 0; } button { color:var(--text); background:var(--card); border:1px solid var(--border); border-radius:5px; padding:4px 7px; }
+.board { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px; } .angle { border:1px solid var(--border); border-radius:8px; padding:12px; margin:10px 0; } .detail-header,.detail-grid { background:var(--card); border:1px solid var(--border); } .detail-header { border-radius:12px 12px 0 0; padding:16px; } .detail-grid { border-top:0; border-radius:0 0 12px 12px; display:grid; grid-template-columns:minmax(0,1fr) 300px; } .detail-main,.detail-side { padding:16px; } .detail-side { border-left:1px solid var(--border); } .detail-actions { margin-top:10px; } .detail-actions a { display:inline-block; color:var(--text); background:var(--card); border:1px solid var(--border); border-radius:5px; padding:4px 7px; margin:0 6px 4px 0; font-size:13px; text-decoration:none; } .breadcrumb,.run-cost,.source-row small { color:var(--muted); font-size:12px; } .stance-record { margin:4px 0; font-size:13px; } .source-row { border-top:1px solid var(--border); padding:8px 0; } .quote { border-left:3px solid var(--chart-ink); padding-left:10px; margin:10px 0; } button { color:var(--text); background:var(--card); border:1px solid var(--border); border-radius:5px; padding:4px 7px; }
 .board-grid { display:grid; grid-template-columns:220px minmax(0,1fr) 260px; gap:0; } .board-left,.board-angles,.board-right { padding:12px; } .board-angles,.board-right { border-left:1px solid var(--border); } .board-label { color:var(--muted); font-size:11px; letter-spacing:.05em; text-transform:uppercase; } .directive,.request-row { border-left:3px solid var(--chart-ink); background:var(--surface); margin:7px 0; padding:7px; font-size:13px; } .held-strip { border:1px dashed var(--sensitive-border); padding:8px; margin:8px 0; font-size:13px; }
 svg { max-width:100%; height:auto; } pre { white-space:pre-wrap; overflow:auto; margin:6px 0; } .mail a { color:#1f3a5f; }
 .pill { display:inline-block; border:1px solid var(--border); border-radius:99px; padding:1px 8px; font-size:12px; line-height:1.4; margin:2px 4px 2px 0; white-space:nowrap; }
@@ -54,9 +57,16 @@ _REPO_URL = "https://github.com/fridai-dot-dev/nbl-storyline-desk"
 _ASK_ADDRESS = "storyline-desk@example.com"
 
 
+_FONTS_HREF = ("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600"
+               "&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap")
+
+
 def _page(title: str, body: str, stylesheet: str) -> str:
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width,initial-scale=1"><title>{escape(title)}</title>'
+            '<link rel="preconnect" href="https://fonts.googleapis.com">'
+            '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            f'<link rel="stylesheet" href="{escape(_FONTS_HREF)}">'
             f'<link rel="stylesheet" href="{stylesheet}"></head><body><main>{body}</main></body></html>')
 
 
@@ -248,6 +258,197 @@ def _judge_score(finding: dict[str, Any]) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
+def _number(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number == number else None
+
+
+def _plural(count: int, word: str) -> str:
+    return f"{count} {word}{'' if count == 1 else 's'}"
+
+
+def _words(items: list[str]) -> str:
+    if len(items) < 2:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+_MELBOURNE = ZoneInfo("Australia/Melbourne")
+_WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+_AFTER_PHRASES = {"supplemental": "after the press conferences", "follow_up": "answering your follow-up"}
+
+
+def _utc(value: Any) -> datetime | None:
+    try:
+        moment = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+def _sent_at(run: dict[str, Any] | None) -> datetime | None:
+    """When an email would have landed: the run's frozen cutoff plus how long the run took."""
+    cutoff = _utc((run or {}).get("as_of"))
+    return cutoff + timedelta(seconds=_number((run or {}).get("duration_s")) or 0) if cutoff else None
+
+
+def _clock(moment: datetime, *, day: bool = True) -> str:
+    local = moment.astimezone(_MELBOURNE)
+    text = f"{local.hour % 12 or 12}:{local.minute:02d} {'am' if local.hour < 12 else 'pm'}"
+    return f"{_WEEKDAYS[local.weekday()]} {text}" if day else text
+
+
+def _relative_phrase(kind: str, run: dict[str, Any] | None, sent: datetime, tipoff: datetime | None) -> str:
+    if kind == "pre_game":
+        if tipoff is None:
+            return ""
+        minutes = (tipoff - sent).total_seconds() / 60
+        if minutes >= 60:
+            return f"{_plural(int(minutes / 60 + 0.5), 'hour')} before tip-off"
+        if minutes >= 1:
+            return f"{int(minutes + 0.5)} min before tip-off"
+        return "at tip-off" if minutes > -1 else f"{int(-minutes + 0.5)} min after tip-off"
+    if kind == "post_game":
+        minutes = int((_number((run or {}).get("duration_s")) or 0) / 60 + 0.5)
+        return f"{minutes} min after the final whistle" if minutes else "under a minute after the final whistle"
+    return _AFTER_PHRASES.get(kind, "")
+
+
+def _when(run: dict[str, Any] | None, kind: str, tipoff: datetime | None = None) -> tuple[str, str]:
+    """The header line ("Sat 9:29 pm · 3 min after the final whistle") and the strip time ("9:29 pm")."""
+    sent = _sent_at(run)
+    if sent is None:
+        return "", "–"
+    phrase = _relative_phrase(kind, run, sent, tipoff)
+    return _clock(sent) + (f" · {phrase}" if phrase else ""), _clock(sent, day=False)
+
+
+def _cutoff_label(run: dict[str, Any] | None, kind: str) -> str:
+    cutoff = _utc((run or {}).get("as_of"))
+    if cutoff is None:
+        return ""
+    return _clock(cutoff) + (", frozen at the final whistle" if kind == "post_game" else "")
+
+
+def _game_for_run(store: Store, stats_db: str | Path, run: dict[str, Any] | None, game_id: str) -> dict[str, Any] | None:
+    if not run:
+        return None
+    try:
+        ctx = ToolContext(stats_db=stats_db, store=store, corpus_dir="", run_id=run["id"], as_of=run["as_of"])
+        return get_game(ctx, game_id)
+    except Exception:
+        return None
+
+
+def _compact_score(game: dict[str, Any] | None) -> str:
+    """"Melbourne United 95–97 Adelaide 36ers", or nothing when the game has no score yet."""
+    if not game or game.get("home_score") is None or game.get("away_score") is None:
+        return ""
+    return f"{game['home_team']} {game['home_score']}–{game['away_score']} {game['away_team']}"
+
+
+def _cut(text: str, limit: int = 60) -> str:
+    text = " ".join(str(text).split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+_TEST_SHAPES = {  # stored test direction -> (true if, false if); {t} is the threshold
+    "at_most": ("{t} or lower", "above {t}"), "at_or_below": ("{t} or lower", "above {t}"),
+    "at_least": ("{t} or higher", "below {t}"), "at_or_above": ("{t} or higher", "below {t}"),
+    "above": ("above {t}", "{t} or lower"), "higher": ("above {t}", "{t} or lower"),
+    "below": ("below {t}", "{t} or higher"), "lower": ("below {t}", "{t} or higher"),
+}
+_CONFIRM_TEXT = re.compile(r"^(.+?)\s+confirms?\s*;\s*(.+?)\s+contradicts?\s*\.?$", re.IGNORECASE)
+
+
+def _test_spec(finding: dict[str, Any]) -> tuple[str, str, str] | None:
+    """(true if, false if, metric) when the finding stores a structured test; otherwise there is none to show."""
+    metric = str(finding.get("metric") or "").strip()
+    threshold = finding.get("threshold")
+    number = _number(threshold)
+    if number is not None:
+        shape = _TEST_SHAPES.get(re.sub(r"[\s-]+", "_", str(finding.get("test_direction") or "").strip().lower()))
+        if shape is None:
+            return None
+        return shape[0].format(t=f"{number:g}"), shape[1].format(t=f"{number:g}"), metric
+    match = _CONFIRM_TEXT.match(threshold.strip()) if isinstance(threshold, str) else None
+    return (match.group(1).strip(" ,;"), match.group(2).strip(" ,;"), metric) if match else None
+
+
+def _test_line_html(spec: tuple[str, str, str]) -> str:
+    true_if, false_if, metric = spec
+    tail = f" ({escape(metric, quote=False)})" if metric else ""
+    return f"<b>True if</b> {escape(true_if, quote=False)} · <b>false if</b> {escape(false_if, quote=False)}{tail}"
+
+
+def _complete_test(finding: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The finding itself when it stores a numeric threshold and a numeric actual result."""
+    if finding and _number(finding.get("threshold")) is not None and _number(finding.get("actual")) is not None:
+        return finding
+    return None
+
+
+def _test_state(pre: dict[str, Any], result: dict[str, Any] | None) -> tuple[bool, dict[str, Any] | None]:
+    """(whether a structured test exists, the finding whose numbers match the linked result's number)."""
+    if pre.get("outcome") == "indeterminate":
+        return False, None
+    source = _complete_test(pre) or _complete_test(result)
+    exists = source is not None or _test_spec(pre) is not None
+    linked = _number((result or {}).get("number"))
+    verified = source if source is not None and linked is not None and abs(float(source["actual"]) - linked) <= 1e-6 else None
+    return exists, verified
+
+
+_CATEGORY_LABELS = {"fan_quote": "fan quotes"}
+_TEAM_LABELS = {"partners": "partnerships"}
+_SOURCE_PHRASES = {"commentary": "the broadcast commentary", "media": "media reports", "press": "a press conference",
+                   "fans": "fan comments", "stats": "the stats"}
+
+
+def _category(finding: dict[str, Any]) -> str:
+    name = str(finding.get("sensitivity") or "")
+    return _CATEGORY_LABELS.get(name, name.replace("_", " "))
+
+
+def _basis_line(finding: dict[str, Any]) -> str:
+    """How the story is backed, for stories that have no test and no ranking note."""
+    kind, source_type = finding.get("kind"), str(finding.get("source_type") or "source")
+    source = _SOURCE_PHRASES.get(source_type, source_type.replace("_", " "))
+    if kind == "checked":
+        return "Checked against the stats."
+    if kind == "attributed":
+        return f"Attributed to {source}; not checked against the stats."
+    return f"Based on {source}; not a stats check."
+
+
+def _top_reason(top: dict[str, Any], candidates: list[dict[str, Any]], more: int) -> str:
+    """Why the top pick ranks first, from the judge's stored scores and audiences."""
+    rivals = [item for item in candidates if item["id"] != top["id"]]
+    newest = _number(top.get("novelty"))
+    rival_novelty = [value for value in (_number(item.get("novelty")) for item in rivals) if value is not None]
+    newest = bool(newest) and all(newest >= value for value in rival_novelty)
+    teams = [_TEAM_LABELS.get(str(name), str(name).replace("_", " ")) for name in top.get("audience") or []]
+    suits = ""
+    if teams:
+        most = bool(rivals) and all(len(teams) >= len(item.get("audience") or []) for item in rivals)
+        suits = f"suits {'the most teams: ' if most else ''}{_words(teams)}"
+    if newest:
+        reason = "it's the newest against the coverage so far" + (f" and {suits}" if suits else "")
+    elif suits:
+        reason = f"it {suits}"
+    else:
+        reason = "it scored highest with the judge" if _judge_score(top) > 0 else "it was the first story the desk recorded"
+    ending = " It's a suggestion, not the only story." if more else " It's a suggestion."
+    if more:
+        ending += f" {more} more {'story is' if more == 1 else 'stories are'} on the board."
+    return f"Ranked first because {reason}." + ending
+
+
 def _followups(finding: dict[str, Any] | None) -> list[dict[str, str]]:
     """Defend the static site against malformed legacy ledger values."""
     items = (finding or {}).get("followups")
@@ -316,10 +517,8 @@ def _chart(
 
 def _score_for_run(store: Store, stats_db: str | Path, run: dict[str, Any], game_id: str) -> tuple[str, str]:
     """The score and quarter line as plain text, without manufacturing either one."""
-    try:
-        ctx = ToolContext(stats_db=stats_db, store=store, corpus_dir="", run_id=run["id"], as_of=run["as_of"])
-        game = get_game(ctx, game_id)
-    except Exception:
+    game = _game_for_run(store, stats_db, run, game_id)
+    if game is None:
         return "Score unavailable", "Quarter scores unavailable"
     score = f"{game['home_team']} {game.get('home_score', '–')} – {game.get('away_score', '–')} {game['away_team']}"
     quarters = game.get("quarters") or {}
@@ -368,7 +567,7 @@ def _status_badge(store: Store, finding: dict[str, Any]) -> str:
     if finding.get("sensitivity") not in SENSITIVE_CATEGORIES:
         return ""
     state = "stance set" if is_promotable(store, finding["id"]) else "awaiting a stance"
-    return f'<span class="pill held">sensitive · {escape(str(finding.get("sensitivity")), quote=False)} · {state}</span>'
+    return f'<span class="pill held">sensitive · {escape(_category(finding), quote=False)} · {state}</span>'
 
 
 def _evidence_summary(store: Store, finding_id: int) -> str:
@@ -413,65 +612,70 @@ def _stance_records(store: Store, finding_id: int, *, empty: bool = True) -> str
     return "".join(records)
 
 
-def _story_box(store: Store, finding: dict[str, Any], *, prefix: str, chart: str = "", test_text: str | None = None, extra: str = "", after: str = "") -> str:
+def _story_box(store: Store, finding: dict[str, Any], *, prefix: str, chart: str = "", test_html: str | None = None, extra: str = "", after: str = "") -> str:
+    """One email story. `test_html` is the already-escaped test or ranking line; without one, the box says how the story is backed."""
     sensitive = finding.get("sensitivity") in SENSITIVE_CATEGORIES
-    tag = f' <span class="sensitive-tag">sensitive · {escape(str(finding.get("sensitivity")), quote=False)}</span>' if sensitive else ""
-    text = test_text or str(finding.get("outcome") or "Status not yet recorded").replace("_", " ")
+    tag = f' <span class="sensitive-tag">sensitive · {escape(_category(finding), quote=False)}</span>' if sensitive else ""
+    note = (f'<div class="test">{test_html}</div>' if test_html
+            else f'<div class="status">{escape(_basis_line(finding), quote=False)}</div>')
     records = _stance_records(store, finding["id"], empty=False)
     records_html = f'<div class="stance-records">{records}</div>' if records else ""
+    unset = "No stance yet. " if sensitive and not records else ""
     return (f'<article class="item{" sensitive" if sensitive else ""}" data-finding="{finding["id"]}"{extra}>'
             f'<b class="h">{escape(_copy_headline(finding), quote=False)}</b>{tag}'
             f'<p class="premise">{escape(_copy_premise(finding), quote=False)}</p>'
-            f'<div class="test">{escape(text, quote=False)}</div>{chart}{after}{records_html}'
-            f'<div class="stance">{_stance_links(finding)}</div>'
+            f'{note}{chart}{after}{records_html}'
+            f'<div class="stance">{unset}{_stance_links(finding)}</div>'
             f'<div class="full-story"><a href="{prefix}findings/{finding["id"]}.html">Full story →</a></div></article>')
 
 
-def _mail_header(run: dict[str, Any] | None, subject: str, kind: str = "") -> str:
-    as_of = escape(str((run or {}).get("as_of") or "run cutoff"), quote=False)
-    if kind == "post_game":
-        minutes = int(round(float((run or {}).get("duration_s") or 0) / 60))
-        sent = f"sent {minutes} min from a cutoff frozen at the final whistle"
-    else:
-        sent = "sent from the run cutoff"
+def _mail_header(subject: str, when: str) -> str:
     return (f'<div class="head"><div class="subj">Subject: {escape(subject, quote=False)}</div>'
             '<b>From: Storyline Desk</b><br><b>To: Leadership, Media, Producers, Broadcast, Partnerships manager · internal only</b><br>'
-            f'{as_of} · {sent}</div>')
+            f'{escape(when, quote=False)}</div>')
 
 
-def _lead(findings: list[dict[str, Any]]) -> str:
-    if not findings:
-        return '<p class="lead serif" data-section="lead" data-source-findings="">No finding is available for this run.</p>'
-    return (f'<p class="lead serif" data-section="lead" data-source-findings="{findings[0]["id"]}">'
-            f'{escape(str(findings[0].get("claim") or ""), quote=False)}</p>')
+def _lead(run: dict[str, Any] | None, stories: list[dict[str, Any]], *, summary: bool = True, fallback: dict[str, Any] | None = None) -> str:
+    """The email's opening paragraph: the run's executive summary when it has one, otherwise a story's premise."""
+    text = str((run or {}).get("exec_summary") or "").strip() if summary else ""
+    if text:
+        ids = [item["id"] for item in stories]
+    else:
+        lead_story = fallback or (stories[0] if stories else None)
+        if lead_story is None:
+            return '<p class="lead serif" data-section="lead" data-source-findings="">No finding is available for this run.</p>'
+        text, ids = _copy_premise(lead_story), [lead_story["id"]]
+    return (f'<p class="lead serif" data-section="lead" data-source-findings="{" ".join(str(item) for item in ids)}">'
+            f'{escape(text, quote=False)}</p>')
 
 
 def _has_fan_data(store: Store, findings: list[dict[str, Any]]) -> bool:
     return any(item.get("source_type") == "fans" or any(row.get("source_type") == "fans" for row in store.evidence(item["id"])) for item in findings)
 
 
-def _test_chart(pre: dict[str, Any], result: dict[str, Any] | None) -> tuple[str, str]:
+def _test_chart(pre: dict[str, Any], result: dict[str, Any] | None) -> tuple[str, str | None]:
+    """The dot-against-test-line image and its status text; no status at all when the story stores no test."""
     if pre.get("outcome") == "indeterminate":
         return "", "Indeterminate: the available result cannot answer this test."
-    try:
-        actual, threshold = float(pre["actual"]), float(pre["threshold"])
-        linked_value = float((result or {}).get("number"))
-    except (KeyError, TypeError, ValueError):
+    exists, verified = _test_state(pre, result)
+    if not exists:
+        return "", None
+    if verified is None:
         return "", "Could not verify this test against the linked result."
-    if abs(actual - linked_value) > 1e-6:
-        return "", "Could not verify this test against the linked result."
-    svg = render_test_result_chart(_copy_headline(pre), str(pre.get("metric") or "test"), threshold,
-                                   str(pre.get("test_direction") or "at_most"), actual,
-                                   str(pre.get("outcome") or "indeterminate"), width=520, height=150)
-    return f'<img class="chart" alt="{escape(_copy_headline(pre), quote=True)}" src="{_image(svg)}">', str(pre.get("outcome") or "result").replace("_", " ")
+    outcome = str(verified.get("outcome") or pre.get("outcome") or "")
+    svg = render_test_result_chart(_copy_headline(pre), str(verified.get("metric") or pre.get("metric") or "test"),
+                                   float(verified["threshold"]), str(verified.get("test_direction") or pre.get("test_direction") or "at_most"),
+                                   float(verified["actual"]), outcome or "indeterminate", width=520, height=150)
+    return f'<img class="chart" alt="{escape(_copy_headline(pre), quote=True)}" src="{_image(svg)}">', (outcome or "result").replace("_", " ")
 
 
-def _generic_email(store: Store, run: dict[str, Any], findings: list[dict[str, Any]], title: str, *, prefix: str, kind: str) -> str:
-    stories = "".join(_story_box(store, item, prefix=prefix) for item in findings if item.get("kind") != "nothing_found")
-    return (f'<section class="mail" data-email-type="{kind}">{_mail_header(run, title, kind)}<div class="body">{_lead(findings)}'
+def _generic_email(store: Store, run: dict[str, Any], findings: list[dict[str, Any]], subject: str, when: str, *, prefix: str, kind: str) -> str:
+    stories_found = [item for item in findings if item.get("kind") != "nothing_found"]
+    stories = "".join(_story_box(store, item, prefix=prefix) for item in stories_found)
+    return (f'<section class="mail" data-email-type="{kind}">{_mail_header(subject, when)}<div class="body">{_lead(run, stories_found, summary=False)}'
             f'<h4>What the desk found</h4>{stories or "<p>No published stories.</p>"}'
             '<div class="reply-box"><b>Reply to steer what happens next</b><br>Ask for anything, for example, or reply with a number, change one, or ask your own.</div>'
-            f'</div><div class="foot">{escape(_RUN_LABELS.get(str(run.get("run_type")), "Run"), quote=False)} · {_duration_label(run)} · {_cost_label(run)} · cutoff {escape(str(run.get("as_of") or ""), quote=False)} · <a href="{prefix}board.html">Open the board</a></div></section>')
+            f'</div><div class="foot">{escape(_RUN_LABELS.get(str(run.get("run_type")), "Run"), quote=False)} · {_duration_label(run)} · {_cost_label(run)} · cutoff {escape(_cutoff_label(run, kind), quote=False)} · <a href="{prefix}board.html">Open the board</a></div></section>')
 
 
 def _followups_html(finding: dict[str, Any], game_id: str) -> str:
@@ -567,7 +771,7 @@ def _finding_page(store: Store, stats_db: str | Path, finding: dict[str, Any], p
         f'{escape(score, quote=False)} › Finding {finding["id"]}</div><h1>{escape(_copy_headline(finding), quote=False)}</h1>'
         f'{_kind_badge(finding)}{_status_badge(store, finding)}{_stance_records(store, finding["id"])}'
         f'<p>{escape(_copy_premise(finding), quote=False)}</p><p class="run-cost">Run cost: {_cost_label(run)}</p>'
-        '<div class="detail-actions"><button>Push it</button><button>Use if it comes up</button><button>Steer away</button><button>Comment</button></div></section>'
+        f'<div class="detail-actions">{_stance_links(finding)}</div></section>'
         '<div class="detail-grid"><section class="detail-main"><h2>Full finding</h2>'
         f'<p>{escape(str(finding.get("claim") or ""), quote=False)}</p>'
         f'<section class="chart-card"><div class="chart-title">{escape(chart_title, quote=False)}</div>'
@@ -607,10 +811,12 @@ def _angle_card_html(store: Store, stats_db: str | Path, finding: dict[str, Any]
             f'{_stance_records(store, finding["id"])}</article>')
 
 
-def _inbox_row(time: str, subject: str, kind: str, href: str | None) -> str:
+def _inbox_row(time: str, subject: str, preview: str, kind: str, href: str | None) -> str:
     """One inbox row; it links only to an email that exists."""
     label = escape(subject, quote=False)
     subject_html = f'<a href="{href}">{label}</a>' if href else f"{label} (not run yet)"
+    if href and preview and preview not in subject:   # a subject that already quotes the headline needs no repeat
+        subject_html += f' <span class="preview">· {escape(preview, quote=False)}</span>'
     return (f'<div class="row" data-run-type="{kind}"><span class="t">{time}</span><span>Storyline Desk</span>'
             f'<span class="s">{subject_html}</span><span class="tag">{kind.replace("_", "-")}</span></div>')
 
@@ -642,32 +848,58 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
     post_findings = by_run.get(post["id"], []) if post else []
     pre_stories = [item for item in pre_findings if item.get("kind") != "nothing_found"]
     results = {item.get("parent_id"): item for item in post_findings if item.get("parent_id")}
+    post_stories = [item for item in post_findings if item.get("kind") != "nothing_found"]
     post_score = _score_for_run(store, stats_db, post, game_id)[0] if post else "No post-game score yet"
-    post_subject = f"{post_score}: what moved" if post and post_score != "Score unavailable" else "Post-game: what moved"
+    pre_game_info = _game_for_run(store, stats_db, pre, game_id)
+    game = pre_game_info or _game_for_run(store, stats_db, post, game_id)
+    tipoff = _utc((pre_game_info or {}).get("start_time"))
 
-    pre_body = _lead(pre_stories) + '<section data-section="tests"><h4>What we\'ll test tonight</h4>'
-    pre_body += "".join(_story_box(store, item, prefix="") for item in pre_stories) + '</section>'
-    if _has_fan_data(store, pre_stories):
-        pre_body += '<section data-section="fan-signal"><h4>What fans said after each team\'s last games</h4><p>Stored comments from recent team videos appear here.</p></section>'
-    else:
-        pre_body += '<p>Fan material appears on a fresh run, when collector data is available.</p>'
-    pre_body += ('<div class="reply-box" data-section="reply"><b>Reply to steer tonight\'s run</b><br>Ask for anything in plain words. For example: '
-                 '<span class="chip">Watch a player</span><span class="chip">Skip an angle</span><span class="chip">Add a question</span></div>'
-                 f'<div class="foot" data-section="footer">Pre-game run · {_duration_label(pre)} · {_cost_label(pre)} · cutoff {escape(str((pre or {}).get("as_of") or ""), quote=False)} · <a href="board.html">Open the board</a></div>')
-    pre_mail = f'<section class="mail" id="pre-game" data-email-type="pre_game">{_mail_header(pre, "Tonight: storylines to test", "pre_game")}<div class="body">{pre_body}</div></section>'
-
-    moved = []
+    # How each pre-game storyline's test came out: the numbers behind the post-game subject and "What moved".
+    moved, moved_items, tests, contradicted = [], [], 0, 0
     for item in pre_stories:
         result = results.get(item["id"])
         chart, status = _test_chart(item, result)
+        exists, verified = _test_state(item, result)
+        tests += int(exists)
+        contradicted += int(verified is not None and str(verified.get("outcome") or "").lower().startswith("contradict"))
         # The tested storyline remains the story being tracked; for an
         # above-threshold mismatch, the linked result is the only copy record
         # that contains the derived first whole-number result.
         display = result if item.get("test_direction") == "above" and result else item
         link = (f'<div class="result-link">Result: <a href="findings/{result["id"]}.html">{escape(_copy_headline(result), quote=False)}</a></div>'
                 if result and display is not result else "")
-        moved.append(_story_box(store, display, prefix="", chart=chart, test_text=status, extra=f' data-test-finding="{item["id"]}"', after=link))
-    promotable = [item for item in post_findings if item.get("kind") != "nothing_found" and is_promotable(store, item["id"])]
+        moved.append(_story_box(store, display, prefix="", chart=chart, test_html=escape(status, quote=False) if status else None,
+                                extra=f' data-test-finding="{item["id"]}"', after=link))
+        moved_items.append(display)
+
+    teams = f"{game['home_team']} v {game['away_team']}, " if game else ""
+    pre_subject = f"Tonight: {teams}{_plural(len(pre_stories), 'storyline')} to test" if pre else "Tonight: storylines to test"
+    post_head = _compact_score(_game_for_run(store, stats_db, post, game_id)) or "Post-game"
+    post_subject = (f"{post_head}: {contradicted} of {tests} pre-game {'storyline' if tests == 1 else 'storylines'} contradicted"
+                    if post and tests else f"{post_head}: what moved")
+    supplemental, follow_up = by_type["supplemental"], by_type["follow_up"]
+    supplemental_stories = [item for item in by_run.get(supplemental["id"], []) if item.get("kind") != "nothing_found"] if supplemental else []
+    follow_stories = [item for item in by_run.get(follow_up["id"], []) if item.get("kind") != "nothing_found"] if follow_up else []
+    supplemental_subject = "After the press conferences" + (
+        f": {_copy_headline(supplemental_stories[0])}" if supplemental_stories else ": nothing new" if supplemental else "")
+    asked = next((request for request in store.requests() if follow_up and request["answered_run_id"] == follow_up["id"]), None)
+    topic = _cut(asked["question"]) if asked else _cut(_copy_headline(follow_stories[0])) if follow_stories else ""
+    follow_subject = "Re: your follow-up" + (f": {topic}" if topic else "")
+
+    pre_when, pre_time = _when(pre, "pre_game", tipoff)
+    pre_body = _lead(pre, pre_stories) + '<section data-section="tests"><h4>What we\'ll test tonight</h4>'
+    pre_body += "".join(_story_box(store, item, prefix="", test_html=_test_line_html(spec) if (spec := _test_spec(item)) else None)
+                        for item in pre_stories) + '</section>'
+    if _has_fan_data(store, pre_stories):
+        pre_body += '<section data-section="fan-signal"><h4>What fans said after each team\'s last games</h4><p>Stored comments from recent team videos appear here.</p></section>'
+    else:
+        pre_body += '<p>Fan material appears on a fresh run, when collector data is available.</p>'
+    pre_body += ('<div class="reply-box" data-section="reply"><b>Reply to steer tonight\'s run</b><br>Ask for anything in plain words. For example: '
+                 '<span class="chip">Watch a player</span><span class="chip">Skip an angle</span><span class="chip">Add a question</span></div>'
+                 f'<div class="foot" data-section="footer">Pre-game run · {_duration_label(pre)} · {_cost_label(pre)} · cutoff {escape(_cutoff_label(pre, "pre_game"), quote=False)} · <a href="board.html">Open the board</a></div>')
+    pre_mail = f'<section class="mail" id="pre-game" data-email-type="pre_game">{_mail_header(pre_subject, pre_when)}<div class="body">{pre_body}</div></section>'
+
+    promotable = [item for item in post_stories if is_promotable(store, item["id"])]
     promotable.sort(key=lambda item: (-_judge_score(item), item["id"]))
     top = promotable[0] if promotable else None
     sensitive = [item for item in post_findings if item.get("sensitivity") in SENSITIVE_CATEGORIES]
@@ -678,26 +910,35 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
         top_svg = _chart(stats_db, top, post["as_of"], width=520, height=260, title=_copy_headline(top))
         if top_svg:
             top_chart = f'<img class="chart" alt="{escape(_copy_headline(top), quote=True)}" src="{_image(top_svg)}">'
-    top_html = _story_box(store, top, prefix="", chart=top_chart, test_text="Ranked first as a suggestion for the internal teams.") if top else '<p>No top pick is promotable yet.</p>'
+    top_html = (_story_box(store, top, prefix="", chart=top_chart,
+                           test_html=escape(_top_reason(top, promotable, len(post_stories) - 1), quote=False))
+                if top else '<p>No top pick is promotable yet.</p>')
     followup_html = '<ol>' + "".join(f'<li class="suggested-followup">{escape(item["question"], quote=False)}</li>' for item in _followups(top)) + '</ol>'
-    post_body = _lead([top] if top else post_findings)
+    post_when, post_time = _when(post, "post_game")
+    post_body = _lead(post, post_stories, fallback=top)
     post_body += '<section data-section="what-moved"><h4>What moved since this afternoon</h4>' + "".join(moved) + '</section>'
-    post_body += '<section data-section="top-pick"><h4>The desk\'s top pick</h4>' + top_html + f'<p>{len(post_findings) - (1 if top else 0)} more stories are on the board.</p></section>'
+    post_body += '<section data-section="top-pick"><h4>The desk\'s top pick</h4>' + top_html + '</section>'
     post_body += '<section data-section="sensitive"><h4>Sensitive stories: set a stance</h4>' + "".join(_story_box(store, item, prefix="") for item in shown) + f'<p>+ {left} more on the board</p></section>'
     post_body += '<section data-section="followups" aria-label="Suggested follow-ups"><h4>Questions worth asking next</h4><p>Reply with a number, change one, or ask your own.</p>' + followup_html + '</section>'
     post_body += '<div class="reply-box" data-section="reply"><b>Reply to steer what happens next</b><br>Ask for anything, for example, or set a stance.</div>'
-    post_body += f'<div class="foot" data-section="footer">Post-game run · {_duration_label(post)} · {_cost_label(post)} · cutoff {escape(str((post or {}).get("as_of") or ""), quote=False)} · <a href="board.html">Open the board</a></div><div class="reply-thread" data-section="reply-thread"><span class="simulated">simulated</span> The reply thread records the next question.</div>'
-    post_mail = f'<section class="mail" id="post-game" data-email-type="post_game">{_mail_header(post, post_subject, "post_game")}<div class="body">{post_body}</div></section>'
+    post_body += f'<div class="foot" data-section="footer">Post-game run · {_duration_label(post)} · {_cost_label(post)} · cutoff {escape(_cutoff_label(post, "post_game"), quote=False)} · <a href="board.html">Open the board</a></div><div class="reply-thread" data-section="reply-thread"><span class="simulated">simulated</span> The reply thread records the next question.</div>'
+    post_mail = f'<section class="mail" id="post-game" data-email-type="post_game">{_mail_header(post_subject, post_when)}<div class="body">{post_body}</div></section>'
 
-    for kind, filename, title in (("supplemental", "supplemental.html", "Addendum: what's new since the briefing"), ("follow_up", "follow-up.html", "Follow-up answer")):
+    times = {"pre_game": pre_time, "post_game": post_time}
+    for kind, filename, subject, title in (("supplemental", "supplemental.html", supplemental_subject, f"Addendum: {supplemental_subject}"),
+                                           ("follow_up", "follow-up.html", follow_subject, follow_subject)):
         run = by_type[kind]
+        when, times[kind] = _when(run, kind)
         if run:
-            body = _generic_email(store, run, by_run.get(run["id"], []), title, prefix="../", kind=kind)
+            body = _generic_email(store, run, by_run.get(run["id"], []), subject, when, prefix="../", kind=kind)
             output.append(_write(out / "emails" / filename, title, body, asset_root=out))
 
-    rows = (("4:30 pm", "Tonight: storylines to test", "pre_game", "#pre-game"), ("9:29 pm", post_subject, "post_game", "#post-game"),
-            ("10:53 pm", "Supplemental addendum", "supplemental", "emails/supplemental.html"), ("11:41 pm", "Follow-up answer", "follow_up", "emails/follow-up.html"))
-    inbox_rows = "".join(_inbox_row(time, subject, kind, href if by_type[kind] else None) for time, subject, kind, href in rows)
+    first = lambda stories: _copy_headline(stories[0]) if stories else ""
+    post_first = moved_items or ([top] if top else post_stories)
+    rows = (("pre_game", pre_subject, first(pre_stories), "#pre-game"), ("post_game", post_subject, first(post_first), "#post-game"),
+            ("supplemental", supplemental_subject, first(supplemental_stories), "emails/supplemental.html"),
+            ("follow_up", follow_subject, first(follow_stories), "emails/follow-up.html"))
+    inbox_rows = "".join(_inbox_row(times[kind], subject, preview, kind, href if by_type[kind] else None) for kind, subject, preview, href in rows)
     honesty = ("This is a rapid build, about 1–1.5 days of full-time work, made to show Claude agent capability. The order of operations, timing, prompts and safety controls are informed guesses, not knowledge of LK's structure or priorities.")
 
     run_order = {name: position for position, name in enumerate(_RUN_LABELS)}
@@ -716,7 +957,8 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
                     + "".join(run_rows) + '</tbody></table></div><details><summary>Searched, nothing found</summary>' + nothing_html
                     + '</details><h2>How this was built</h2><p>' + how_built + '</p></section>')
     index = ('<h1>The night in one inbox</h1><section class="inbox" data-region="inbox-strip">' + inbox_rows + '</section>'
-             '<p class="internal-note" data-region="internal-note">Everyone on this list is internal. Anyone can set a stance: push it, use it if it comes up, or steer away. ' + honesty + '</p><div class="cols">' + pre_mail + post_mail + '</div>' + runs_section)
+             '<p class="internal-note" data-region="internal-note">Everyone on this list is internal. Anyone can set a stance: push it, use it if it comes up, or steer away.</p>'
+             '<p class="honesty-note" data-region="honesty-note">' + honesty + '</p><div class="cols">' + pre_mail + post_mail + '</div>' + runs_section)
     output.append(_write(out / "index.html", "The night in one inbox", index, asset_root=out))
 
     cards, held = [], []

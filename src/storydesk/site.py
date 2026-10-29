@@ -112,6 +112,28 @@ _RUN_LABELS = {
 _REPO_URL = "https://github.com/fridai-dot-dev/nbl-storyline-desk"
 
 
+def _evidence_source_html(item: dict[str, Any]) -> str:
+    """Link evidence only to browser-safe web URLs and canonical stats sources."""
+    url = str(item.get("url") or "")
+    if item.get("source_type") == "stats":
+        relation = f"{url} {item.get('ref') or ''}".lower()
+        releases = "https://github.com/JaseZiv/nblr_data/releases/tag/"
+        if "box_player" in relation:
+            url = releases + "pbp"
+        elif "box_team" in relation:
+            url = releases + "box_team"
+        elif "results" in relation:
+            url = releases + "match_results"
+        else:
+            url = f"{_REPO_URL}/blob/main/docs/data-provenance.md"
+        return f'<a href="{escape(url, quote=True)}">source</a>'
+
+    parsed = re.sub(r"[\x00-\x20\x7f]", "", url).lower()
+    if parsed.startswith(("http:", "https:")):
+        return f'<a href="{escape(url, quote=True)}">source</a>'
+    return escape(url, quote=False)
+
+
 def _published_content(store: Store, game_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Return the complete, current runs and findings allowed into a site build."""
     all_runs = store.game_runs(game_id)
@@ -358,7 +380,7 @@ def _finding_page(
     evidence = store.evidence(finding["id"])
     evidence_html = "".join(
         f"<blockquote>{escape(_HANDLE.sub('', item.get('quote') or 'Evidence recorded without a quote.'))}<br>"
-        f"<small>{escape(item['source_type'])} · <a href=\"{escape(item['url'], quote=True)}\">source</a> · {escape(item['ref'])}</small></blockquote>"
+        f"<small>{escape(item['source_type'])} · {_evidence_source_html(item)} · {escape(item['ref'])}</small></blockquote>"
         for item in evidence
     ) or "<p class=\"muted\">No quote was required for this source.</p>"
     query_html = ""

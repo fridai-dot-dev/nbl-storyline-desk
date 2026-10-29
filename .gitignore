@@ -22,3 +22,5 @@ data/
 store/
 # The checked-in static snapshot is the published demo. Keep local archives and
 # generated spools out through the rules above.
+*.db-shm
+*.db-wal

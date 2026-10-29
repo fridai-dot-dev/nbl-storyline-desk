@@ -8,3 +8,8 @@
 - `digests/post_game/` uses the final-whistle cutoff, 2026-09-19T11:26:37+00:00.
 - `digests/supplemental/` uses the post-interview cutoff, 2026-09-19T12:50:00+00:00.
 - `digests/follow_up/` uses the final-whistle cutoff and anchor finding 34.
+
+## Known defects in this snapshot
+
+- **The score line in `game.md`** reads "Melbourne United 95 – 97 97": the formatter printed the away score where the away team's name belonged. The agents saw that line. The quarter scores beside it were right. The formatter is fixed for future runs, and these files are kept as the runs saw them.
+- **The stats evidence URLs** in `store.db` are the agents' guesses and don't resolve. The site links stats evidence to the real nblR release instead, from the table named in each item.

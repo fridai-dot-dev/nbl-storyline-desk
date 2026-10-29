@@ -26,7 +26,7 @@
   - sensitive items are held
   - nothing after a run's cutoff is visible
 
-  133 offline checks and 3 live checks pass.
+  The offline and live checks all pass.
 - **Still to prove, with people:**
   - a blind rating of the new angles by basketball fans
   - a backtest against what media published after the game

@@ -149,7 +149,7 @@ class QuietClient:
         yield fake_result(0.2, 10)
 
 
-def test_follow_up_run_records_and_answers_its_request(demo_store, tmp_path):
+def test_follow_up_run_records_its_request(demo_store, tmp_path):
     from storydesk.runner import run_live
 
     q = "Where does this rank league-wide?"
@@ -161,7 +161,7 @@ def test_follow_up_run_records_and_answers_its_request(demo_store, tmp_path):
     reqs = [r for r in demo_store.store.requests() if r["question"] == q]
     assert len(reqs) == 1
     assert reqs[0]["anchor_finding_id"] == demo_store.f_checked
-    assert reqs[0]["answered_run_id"] == run_id
+    assert reqs[0]["answered_run_id"] is None    # incomplete, so still pending (final review, 2026-10-29)
     assert reqs[0]["asked_by"] == "NBL Now producer"
 
 

@@ -279,6 +279,24 @@ class Store:
             )
             return int(cur.lastrowid)
 
+    def find_or_add_request(self, anchor_finding_id: int, asked_by: str, question: str) -> int:
+        """Reuse the matching pending request when a follow-up is retried."""
+        question = question.strip()
+        with self._con() as con:
+            row = con.execute(
+                "SELECT id FROM requests "
+                "WHERE anchor_finding_id = ? AND question = ? AND answered_run_id IS NULL "
+                "ORDER BY id LIMIT 1",
+                (anchor_finding_id, question),
+            ).fetchone()
+            if row is not None:
+                return int(row["id"])
+            cur = con.execute(
+                "INSERT INTO requests (anchor_finding_id, asked_by, question, created_at) VALUES (?, ?, ?, ?)",
+                (anchor_finding_id, asked_by, question, _now()),
+            )
+            return int(cur.lastrowid)
+
     def answer_request(self, request_id: int, run_id: int) -> None:
         with self._con() as con:
             con.execute("UPDATE requests SET answered_run_id = ? WHERE id = ?", (run_id, request_id))

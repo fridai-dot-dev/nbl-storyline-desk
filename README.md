@@ -2,14 +2,14 @@
 
 **An agent desk that turns each NBL game into checked, cross-source storylines for leadership and producers, inside 30 minutes of the final whistle.** It's built on the Claude Agent SDK and run on real NBL27 data: the Round 1 opener, Melbourne United 95–97 Adelaide 36ers.
 
-> **See it:** the [leadership briefing email](site/outbox/post-game-email.html) · a [record stat with its proof](site/findings/25.html) · a [producer follow-up, answered](site/findings/39.html) · [how it was built](docs/build-log.md)
-> (On GitHub, open the live pages through the Pages link in the repo description. The HTML files here are the same pages.)
+> **See it live:** the [leadership briefing email](https://fridai-dot-dev.github.io/nbl-storyline-desk/outbox/post-game-email.html) · a [record stat with its proof](https://fridai-dot-dev.github.io/nbl-storyline-desk/findings/25.html) · a [producer follow-up, answered](https://fridai-dot-dev.github.io/nbl-storyline-desk/findings/39.html) · [the whole desk](https://fridai-dot-dev.github.io/nbl-storyline-desk/) · [how it was built](docs/build-log.md)
+> The same pages are in [`site/`](site/).
 
 ## What it found on Round 1
 
 Each of these came from agents working across the stats, the broadcast, the press conferences and the live fan chat. Code then checked them before release.
 
-- **Cole Anthony scored 30 in 21:50, the fewest minutes for a 30-point game in the box-score data since 2015-16,** among box rows with minutes recorded: 370 such games up to that night. The stats specialist found it after the game and wrote it as its own checked record. It's held for sign-off because it touches his reported minutes limit.
+- **Cole Anthony scored 30 in 21:50, the fewest minutes for a 30-point game in the box-score data since 2015-16,** among box rows with minutes recorded: 370 such games up to that night. The stats specialist found it after the game and wrote it as its own checked record. It was held because it touches his reported minutes limit, and the demo approver has signed it off for producers only.
 - **Melbourne's bench outscored Adelaide's by 30, and Melbourne still lost.** It was a producer's follow-up question. Since 2015-16, the weaker bench has won 18 of 74 games with a gap that size. Adelaide's starter-heavy load wasn't new: it was close to last season's share.
 - **A fan's "10-point referee gift" claim, tested against the play-by-play.** Melbourne scored 4 fourth-quarter free-throw points and Adelaide scored 5. The desk didn't amplify the claim, and it showed the same message had been posted twice in 81 seconds.
 - **Adelaide won from three, not on balance.** They made 13 threes to Melbourne's 7, an 18-point edge, while Melbourne won the two-point battle 58–38.
@@ -39,7 +39,7 @@ flowchart LR
 - **Numbers are rechecked by code.** Every checked number stores the SQL that produced it, and code re-runs it before release. Wrong numbers are dropped. Quoted numbers stay inside the quote with their source.
 - **Records state where the data starts:** "since at least 2015-16".
 - **Sensitive items are held until a named person signs off,** separately for each audience. That covers injury, officiating, conflict, legal and fan quotes.
-- **Agents don't grade their own work.** A separate judge pass scores how new each finding is and who it's for.
+- **Agents don't grade their own work.** Code scores how new each finding is against coverage published before the cutoff. A separate judge pass scores who it's for and how it ties to a directive or an editorial need.
 
 ## Speed and cost (measured)
 
@@ -60,7 +60,7 @@ Decide, prove, build, review, then run on real data early:
 3. **Build and review.** Codex built against those checks in small rounds, and a second model reviewed each round adversarially.
 4. **Live runs.** These exposed problems the offline tests couldn't, such as specialists being abandoned mid-run and search hiding the fourth quarter. Each one became a failing check, then a fix.
 
-There are 133 offline checks and 3 live checks, and all pass. The [build log](docs/build-log.md) has the timeline, and the [review trail](docs/reviews/README.md) has every review and prompt.
+There are 155 offline checks and 3 live checks, and all pass. The [build log](docs/build-log.md) has the timeline, and the [review trail](docs/reviews/README.md) has every review and prompt.
 
 ## Docs
 
@@ -85,6 +85,7 @@ Live runs need a Claude login or an `ANTHROPIC_API_KEY`. Building the run corpus
 
 - **One game.** This is a demo on one game, using public stand-ins for LK's own feeds: Genius stats, broadcast audio and social data.
 - **Auto-captions** can mishear names. Any number taken from commentary is quoted or rechecked.
+- **Agents guessed source URLs.** On these runs, every source link for a statistic was a plausible URL that didn't resolve. Code now links stats evidence to the real data release, and agents name only the table and rows.
 - **Human acceptance checks are still to do:** a blind fan rating, a backtest against published coverage, and a cold read test. The headline facts were checked by hand against ESPN's independent box score ([verification](docs/verification.md)).
 - **Not production-hardened:** there's no auth, scheduling or live feeds yet. The [team pitch](docs/team-pitch.md) lists what comes next.
 

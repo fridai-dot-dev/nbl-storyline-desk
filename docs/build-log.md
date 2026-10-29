@@ -33,22 +33,29 @@ Each item below became a failing check before it was fixed.
 9. A record claim buried inside another finding was not rechecked. Now every finding has one checked number. `70584ab` (20:05:31).
 10. Bart proposed suggested follow-ups: rarity, on-pace, comparison and context. They run in the existing judge pass with no extra agent runs. `7c70eca` (20:23:55), `6435e89` (21:29:09).
 11. Polish added an exec summary, rendered editor notes, a deduplicated email, chart labels, and fixed a CSS class collision that faded text. `327ea52` (21:33:55), `bf9637b` (21:58:26).
+12. Sol's final pre-publication review found:
+    - failed follow-ups marked as answered
+    - a deadline that could overrun while waiting on an interrupt
+    - unchecked link schemes
+    - a malformed score line in the starting digests
+
+    A link check also found that every stats source link was a URL the agents had guessed, and none resolved. Code now links stats evidence to the real nblR release.
 
 ## The published run
 
-Cost is at API prices. The runs used Bart's Claude subscription and include judge passes.
+Cost is at API prices. The runs used Bart's Claude subscription. Run cost includes each run's own judge pass. Re-judging is the demo re-scoring finished runs after the judge gained suggested follow-ups, so a live game wouldn't pay it. The ledger keeps both.
 
-| Run | ID | Duration | Cost |
-| --- | ---: | ---: | ---: |
-| Pre-game | 2 | 151 s | US$1.83 |
-| Post-game | 5 | 180 s | US$3.11 |
-| Supplemental | 6 | 199 s | US$2.21 |
-| Follow-up | 7 | 195 s | US$1.96 |
+| Run | ID | Duration | Run cost | Demo re-judging | Ledger total |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Pre-game | 2 | 151 s | US$1.21 | US$0.62 | US$1.83 |
+| Post-game | 5 | 180 s | US$2.16 | US$0.95 | US$3.11 |
+| Supplemental | 6 | 199 s | US$1.77 | US$0.44 | US$2.21 |
+| Follow-up | 7 | 195 s | US$1.54 | US$0.42 | US$1.96 |
 
 Runs 3 and 4 stopped at the Pro session limit. They remain in the store and are excluded from the site.
 
 ## Checks and collaboration
 
-133 offline checks pass. The three live checks, D10, D11 and D13, pass against the published store.
+155 offline checks pass. The three live checks, D10, D11 and D13, pass against the published store.
 
 Bart chose the game, the follow-up question called the bench paradox, and the suggested-follow-up feature. His other recorded decisions were: NBL rather than Daniel's Donuts; four run types and follow-up research as a headline feature; a pitch led by cross-source links and collaboration; the build-versus-buy criteria; email for leadership and a board for producers; hidden queries; the accepted deepen answers and definition of a disappointing run; graphics as a future direction; no Claude API spend, with Claude Code as fallback; Apify where useful; and a public repository and site that show the work in full.

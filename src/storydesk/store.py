@@ -14,11 +14,26 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def _moment(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (AttributeError, ValueError) as exc:
+        raise ValueError("stance timestamp must be ISO 8601") from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 def _json(value: Any) -> str:
     return json.dumps(value, default=str, separators=(",", ":"))
 
 
 class Store:
+    COPY_FIELDS = frozenset({
+        "plain_headline", "premise", "metric", "threshold", "test_direction", "actual", "outcome",
+    })
+    OVERRIDE_ROLES = frozenset({"League GM", "LK director"})
+
     def __init__(self, path: str | Path):
         self.path = Path(path)
 
@@ -258,6 +273,33 @@ class Store:
                 [normalised[name] for name in names] + [finding_id],
             )
 
+    def update_finding_copy(self, updates: list[tuple[int, dict[str, Any]]]) -> None:
+        """Apply one validated copy pass in a single transaction."""
+        with self._con() as con:
+            for finding_id, fields in updates:
+                if not fields or not set(fields) <= self.COPY_FIELDS:
+                    raise ValueError("copy update contains unsupported fields")
+                names = list(fields)
+                cursor = con.execute(
+                    f"UPDATE findings SET {', '.join(f'{name} = ?' for name in names)} WHERE id = ?",
+                    [fields[name] for name in names] + [finding_id],
+                )
+                if cursor.rowcount != 1:
+                    raise KeyError(f"finding {finding_id} does not exist")
+
+    def linked_findings(self, finding_id: int) -> list[dict[str, Any]]:
+        """Return the direct parent and children used to validate structured result copy."""
+        with self._con() as con:
+            row = con.execute("SELECT parent_id FROM findings WHERE id = ?", (finding_id,)).fetchone()
+            if row is None:
+                raise KeyError(f"finding {finding_id} does not exist")
+            ids = [child[0] for child in con.execute(
+                "SELECT id FROM findings WHERE parent_id = ? ORDER BY id", (finding_id,),
+            ).fetchall()]
+            if row["parent_id"] is not None:
+                ids.insert(0, row["parent_id"])
+        return [self.get_finding(item) for item in ids]
+
     def set_headline(self, finding_id: int, text: str | None) -> None:
         with self._con() as con:
             con.execute("UPDATE findings SET headline = ? WHERE id = ?", (text, finding_id))
@@ -312,26 +354,41 @@ class Store:
         if not isinstance(role, str) or not role.strip():
             raise ValueError("stance role is required")
         timestamp = at or _now()
+        incoming = _moment(timestamp)
+        role = role.strip()
         with self._con() as con:
             if con.execute("SELECT 1 FROM findings WHERE id = ?", (finding_id,)).fetchone() is None:
                 raise KeyError(f"finding {finding_id} does not exist")
+            current = con.execute(
+                "SELECT created_at FROM stances WHERE finding_id = ? AND role = ?", (finding_id, role),
+            ).fetchone()
+            if current is not None and incoming < _moment(current["created_at"]):
+                raise ValueError(f"stale stance update for {role} on finding {finding_id}")
             con.execute(
                 """INSERT INTO stances (finding_id, role, stance, comment, created_at, simulated)
                    VALUES (?, ?, ?, ?, ?, ?)
                    ON CONFLICT(finding_id, role) DO UPDATE SET stance = excluded.stance,
                        comment = excluded.comment, created_at = excluded.created_at, simulated = excluded.simulated""",
-                (finding_id, role.strip(), stance, comment, timestamp, int(simulated)),
+                (finding_id, role, stance, comment, timestamp, int(simulated)),
             )
             con.execute(
                 "UPDATE directives SET status = 'cleared' WHERE finding_id = ? AND stance_role = ? AND status = 'active'",
-                (finding_id, role.strip()),
+                (finding_id, role),
             )
+            if role in self.OVERRIDE_ROLES and stance in {"push", "use_if_raised"}:
+                con.execute(
+                    """UPDATE directives SET status = 'cleared'
+                       WHERE finding_id = ? AND status = 'active' AND stance_role IN (
+                           SELECT role FROM stances WHERE finding_id = ? AND stance = 'steer_away'
+                       )""",
+                    (finding_id, finding_id),
+                )
             if stance == "steer_away":
                 text = str(comment or f"Steer away from finding {finding_id}.").strip()
                 con.execute(
                     """INSERT INTO directives (owner_role, text, mandatory, expires, status, simulated, created_at, finding_id, stance_role)
                        VALUES (?, ?, 1, NULL, 'active', ?, ?, ?, ?)""",
-                    (role.strip(), text, int(simulated), timestamp, finding_id, role.strip()),
+                    (role, text, int(simulated), timestamp, finding_id, role),
                 )
 
     def stances(self, finding_id: int) -> list[dict[str, Any]]:

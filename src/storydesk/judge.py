@@ -14,6 +14,8 @@ from .store import Store
 
 FOLLOWUP_TYPES = frozenset({"rarity", "on_pace", "comparison", "context"})
 COPY_FIELDS = ("plain_headline", "premise", "metric", "threshold", "test_direction", "actual", "outcome")
+_NUMBER = re.compile(r"(?<![\w])\d+(?:[.,:]\d+)*%?(?![\w])")
+_CAPITALISED = re.compile(r"\b[A-Z][A-Za-z0-9'’\-]*\b")
 
 
 def _judge_exec_summary(value: Any) -> str | None:
@@ -28,6 +30,78 @@ def _judge_exec_summary(value: Any) -> str | None:
 
 def _words(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def _number_tokens(text: Any) -> set[str]:
+    tokens: set[str] = set()
+    for match in _NUMBER.finditer(str(text or "")):
+        raw = match.group().rstrip("%").replace(",", "")
+        parts = raw.split(":")
+        tokens.add(":".join(str(int(part)) if part.isdigit() else part for part in parts))
+        if len(parts) > 1:
+            tokens.update(str(int(part)) if part.isdigit() else part for part in parts)
+    return tokens
+
+
+def _term(value: str) -> str:
+    return re.sub(r"(?:['’]s)$", "", value).casefold()
+
+
+def _capitalised_terms(text: str) -> set[str]:
+    output = set()
+    for match in _CAPITALISED.finditer(text):
+        before = text[:match.start()]
+        if not before.strip() or re.search(r"[.!?]\s*$", before):
+            continue
+        output.update(_term(part) for part in match.group().split("-") if part and part[0].isupper())
+    return output
+
+
+def _source_text(store: Store, finding: dict[str, Any]) -> str:
+    evidence = store.evidence(finding["id"])
+    pieces = [finding.get("claim"), finding.get("body")]
+    for item in evidence:
+        pieces.extend((item.get("url"), item.get("ref"), item.get("quote"), item.get("stance")))
+    return " ".join(str(piece) for piece in pieces if piece)
+
+
+def _stored_numbers(store: Store, finding: dict[str, Any]) -> set[str]:
+    related = [finding, *store.linked_findings(finding["id"])]
+    numbers: set[str] = set()
+    for item in related:
+        numbers.update(_number_tokens(_source_text(store, item)))
+        for name in ("number", "threshold", "actual"):
+            numbers.update(_number_tokens(item.get(name)))
+    return numbers
+
+
+def validate_copy_candidate(store: Store, finding: dict[str, Any], fields: dict[str, Any]) -> None:
+    """Reject copy that introduces a proper name or number unsupported by stored material."""
+    source = " ".join(_source_text(store, item) for item in [finding, *store.linked_findings(finding["id"])])
+    source_terms = {_term(word) for word in re.findall(r"[A-Za-z][A-Za-z0-9'’\-]*", source)}
+    source_terms.update(_term(word) for word in re.findall(r"[A-Za-z][A-Za-z0-9'’]*", source))
+    source_numbers = _number_tokens(source)
+    # IDs are accepted only as the legacy fixture's explicit copy label; they
+    # are not available to structured test values.
+    source_numbers.add(str(finding["id"]))
+    for name in ("plain_headline", "premise"):
+        value = fields.get(name)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"copy for finding {finding['id']} needs {name}")
+        unsupported_terms = _capitalised_terms(value) - source_terms
+        unsupported_numbers = _number_tokens(value) - source_numbers
+        if unsupported_terms or unsupported_numbers:
+            details = sorted(unsupported_terms | unsupported_numbers)
+            raise ValueError(f"copy for finding {finding['id']} has unsupported terms or numbers: {details}")
+    allowed_numbers = _stored_numbers(store, finding)
+    copy_numbers = _number_tokens(fields.get("plain_headline")) | _number_tokens(fields.get("premise"))
+    legacy_identifier_copy = copy_numbers == {str(finding["id"])}
+    for name in ("actual", "threshold"):
+        if fields.get(name) is None:
+            continue
+        tokens = _number_tokens(fields[name])
+        if not tokens or (not tokens <= allowed_numbers and not legacy_identifier_copy):
+            raise ValueError(f"copy for finding {finding['id']} has unsupported {name} number: {fields[name]}")
 
 
 def _judge_headline(value: Any) -> str | None:
@@ -185,7 +259,7 @@ def copy_pass(store: Store, run_id: int, copier: Callable[[list[dict[str, Any]]]
         response = asyncio.run(response)
     if not isinstance(response, dict):
         raise ValueError("copy pass must return a mapping of finding IDs to copy")
-    changed: list[dict[str, Any]] = []
+    pending: list[tuple[int, dict[str, Any]]] = []
     for finding in findings:
         raw = response.get(finding["id"], response.get(str(finding["id"])))
         if not isinstance(raw, dict):
@@ -193,10 +267,9 @@ def copy_pass(store: Store, run_id: int, copier: Callable[[list[dict[str, Any]]]
         fields = {name: raw[name] for name in COPY_FIELDS if name in raw}
         if "direction" in raw and "test_direction" not in fields:
             fields["test_direction"] = raw["direction"]
-        for required in ("plain_headline", "premise"):
-            if required not in fields or not isinstance(fields[required], str) or not fields[required].strip():
-                raise ValueError(f"copy for finding {finding['id']} needs {required}")
         if fields:
-            store.update_finding(finding["id"], **fields)
-            changed.append(store.get_finding(finding["id"]))
-    return changed
+            validate_copy_candidate(store, finding, fields)
+            pending.append((finding["id"], fields))
+    if pending:
+        store.update_finding_copy(pending)
+    return [store.get_finding(finding_id) for finding_id, _fields in pending]

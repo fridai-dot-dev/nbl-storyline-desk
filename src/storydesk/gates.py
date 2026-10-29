@@ -96,22 +96,16 @@ def is_promotable(
     blocks; it is also the only way to clear an override role's block.
     """
     finding = store.get_finding(finding_id)
-    if finding.get("sensitivity") not in SENSITIVE_CATEGORIES:
-        return True
     stances = store.stances(finding_id)
     positive = [item for item in stances if item.get("stance") in {"push", "use_if_raised"}]
-    if not positive:
-        return False
     blocked = [item for item in stances if item.get("stance") == "steer_away"]
-    if not blocked:
-        return True
-    overrides = set(override_roles)
-    override_positive = [item for item in positive if item.get("role") in overrides]
-    if not override_positive:
-        return False
-    # An override positive stance explicitly clears all ordinary blocks and is
-    # the required authority for an override block.
-    return True
+    if blocked:
+        overrides = set(override_roles)
+        override_positive = [item for item in positive if item.get("role") in overrides]
+        if not override_positive:
+            return False
+    # Only sensitive stories need an affirmative stance before promotion.
+    return finding.get("sensitivity") not in SENSITIVE_CATEGORIES or bool(positive)
 
 
 def apply_gates(store: Store, run_id: int, *, stats_db: str | Path, as_of: str | datetime) -> dict[str, Any]:

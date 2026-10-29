@@ -221,9 +221,9 @@ def test_f3_headers_and_strip_show_melbourne_time_and_a_relative_phrase(r1_site)
     assert "Sat 9:29 pm · 3 min after the final whistle" in _header(_mail(out, "post_game"))
     supplemental = one(parse_html(_read(out, "emails/supplemental.html")), cls="mail")
     assert "Sat 10:20 pm · after the press conferences" in _header(supplemental)
-    assert "Sat 9:27 pm" in _header(one(parse_html(_read(out, "emails/follow-up.html")), cls="mail"))
+    assert "later" in _header(one(parse_html(_read(out, "emails/follow-up.html")), cls="mail")).lower()
     times = {kind: " ".join(row.descendants(cls="t")[0].text().split()) for kind, row in _strip_rows(out).items()}
-    assert times == {"pre_game": "4:32 pm", "post_game": "9:29 pm", "supplemental": "10:20 pm", "follow_up": "9:27 pm"}
+    assert times == {"pre_game": "4:32 pm", "post_game": "9:29 pm", "supplemental": "10:20 pm", "follow_up": "later"}
 
 
 def test_f3_a_different_cutoff_renders_a_different_strip_time_and_phrase(tmp_path, stats_db):
@@ -249,14 +249,17 @@ def test_f4_subjects_are_built_from_the_stored_tests_and_stories(r1_site):
     assert _subject(follow) == "Subject: Re: your follow-up: How often had Adelaide overcome a 30-point bench deficit?"
 
 
-def test_f4_strip_rows_show_the_subject_and_a_muted_preview_of_the_first_story(r1_site):
+def test_f4_strip_rows_show_the_subject_and_the_designed_muted_preview(r1_site):
     ns, out = r1_site
     root = parse_html(_read(out, "index.html"))
     rows = _strip_rows(out)
     pre_first = ns.payload["findings"][0]["plain_headline"]
     expectations = {
         "pre_game": (_subject(_mail(out, "pre_game")), pre_first),
-        "post_game": (_subject(_mail(out, "post_game")), one(_boxes(_mail(out, "post_game"))[0], cls="h").text()),
+        "post_game": (
+            _subject(_mail(out, "post_game")),
+            ns.store.get_finding(ns.finding_ids["top_pick"])["plain_headline"],
+        ),
     }
     for kind, filename in (("supplemental", "supplemental.html"), ("follow_up", "follow-up.html")):
         mail = one(parse_html(_read(out, f"emails/{filename}")), cls="mail")
@@ -312,14 +315,16 @@ def test_f5_leads_use_the_run_summary_and_never_a_raw_finding_body(tmp_path, sta
     assert one(_mail(out, "pre_game"), cls="lead").text() == "Melbourne host Adelaide with three storylines to test."
 
 
-def test_f5_pre_game_lead_falls_back_to_the_top_storys_premise(tmp_path, stats_db):
+def test_f5_pre_game_lead_falls_back_to_a_data_summary_without_repeating_a_premise(tmp_path, stats_db):
     def drop_pre_summary(ns):
         _add_jargon_to_every_claim(ns)
         ns.store.set_exec_summary(ns.run_ids["pre"], None)
 
     ns, out = _variant(tmp_path, stats_db, drop_pre_summary)
     premise = ns.store.get_finding(ns.finding_ids["test_valid"])["premise"]
-    assert one(_mail(out, "pre_game"), cls="lead").text() == premise
+    lead = one(_mail(out, "pre_game"), cls="lead").text()
+    assert lead == "3 storylines to test tonight: 2 checked against the stats, 0 sensitive and waiting for a stance."
+    assert lead != premise
     for page, mail in _mails(out):
         assert not JARGON.search(_visible_text(mail)), page.name
 

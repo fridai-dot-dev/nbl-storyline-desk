@@ -27,7 +27,7 @@ AGORA_CSS = """
 * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter,system-ui,sans-serif; } main { max-width:1240px; margin:auto; padding:24px 16px 48px; } h1,h2,h3,.serif,.subj { font-family:"Source Serif 4",Georgia,serif; } code,.data { font-family:ui-monospace,SFMono-Regular,monospace; } a { color:var(--chart-ink); } .muted { color:var(--muted); }
 .inbox,.mail { background:var(--email-bg); color:var(--email-text); border:1px solid #cfcfcf; } .inbox { margin-bottom:12px; } .row { display:grid; grid-template-columns:70px 150px 1fr 90px; gap:10px; padding:9px 14px; border-top:1px solid #cfcfcf; font-size:13px; align-items:baseline; } .row:first-child { border-top:0; } .row .tag,.row .t { color:#5c5c5c; font-size:11px; } .row .s { font-weight:600; } .row .preview { color:#5c5c5c; font-weight:400; }
 .internal-note { margin:6px 0 10px; font-size:13px; } .honesty-note { margin:0 0 16px; padding:2px 0 2px 12px; border-left:3px solid var(--chart-ink); font-size:13px; } .cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; align-items:start; } .head { padding:12px 16px; border-bottom:1px solid #cfcfcf; font-size:12px; line-height:1.6; } .subj { font-size:19px; font-weight:600; margin:2px 0 4px; line-height:1.3; } .body { padding:16px; max-width:600px; font-size:14px; line-height:1.55; } .body h4 { font-family:Inter,system-ui,sans-serif; font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin:22px 0 8px; } .lead { font-size:15px; margin-top:0; }
-.item { border:1px solid #cfcfcf; background:#f3f3f3; padding:10px 12px; margin-bottom:8px; font-size:13px; } .item.sensitive { border-left:3px solid var(--sensitive-border); } .h { display:block; font-size:14px; margin-bottom:3px; } .premise { margin:0 0 5px; } .test,.status { font-size:12px; margin-top:5px; } .stance { font-size:12px; margin-top:6px; padding-top:5px; border-top:1px solid #cfcfcf; } .stance a { margin-right:8px; } .full-story { font-size:12px; margin-top:6px; } .sensitive-tag { color:var(--sensitive-text); background:var(--sensitive-bg); border:1px solid var(--sensitive-border); font-size:10px; font-weight:600; letter-spacing:.04em; padding:0 5px; text-transform:uppercase; } .chart { display:block; width:100%; border:1px solid #cfcfcf; background:#fff; padding:5px; margin:7px 0; } .reply-box { border:2px solid #1a1a1a; padding:10px 12px; margin-top:16px; font-size:13px; } .chip { display:inline-block; border:1px dashed #6b6b6b; padding:1px 7px; margin:3px 4px 0 0; font-size:12px; } .foot,.reply-thread { border-top:1px solid #cfcfcf; padding:10px 16px; font-size:11px; } .reply-thread { font-size:13px; } .simulated { border:1px solid #cfcfcf; padding:0 4px; font-size:10px; }
+.item { border:1px solid #cfcfcf; background:#f3f3f3; padding:10px 12px; margin-bottom:8px; font-size:13px; } .item.sensitive { border-left:3px solid var(--sensitive-border); } .h { display:block; font-size:14px; margin-bottom:3px; } .premise { margin:0 0 5px; } .test,.status,.result-line { font-size:12px; margin-top:5px; } .stance { font-size:12px; margin-top:6px; padding-top:5px; border-top:1px solid #cfcfcf; } .stance a { margin-right:8px; } .full-story { font-size:12px; margin-top:6px; } .sensitive-tag { color:var(--sensitive-text); background:var(--sensitive-bg); border:1px solid var(--sensitive-border); font-size:10px; font-weight:600; letter-spacing:.04em; padding:0 5px; text-transform:uppercase; } .chart { display:block; width:100%; border:1px solid #cfcfcf; background:#fff; padding:5px; margin:7px 0; } .reply-box { border:2px solid #1a1a1a; padding:10px 12px; margin-top:16px; font-size:13px; } .chip { display:inline-block; border:1px dashed #6b6b6b; padding:1px 7px; margin:3px 4px 0 0; font-size:12px; } .foot,.reply-thread { border-top:1px solid #cfcfcf; padding:10px 16px; font-size:11px; } .reply-thread { font-size:13px; } .simulated { border:1px solid #cfcfcf; padding:0 4px; font-size:10px; } .legacy-check { display:none!important; }
 .board { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px; } .angle { border:1px solid var(--border); border-radius:8px; padding:12px; margin:10px 0; } .detail-header,.detail-grid { background:var(--card); border:1px solid var(--border); } .detail-header { border-radius:12px 12px 0 0; padding:16px; } .detail-grid { border-top:0; border-radius:0 0 12px 12px; display:grid; grid-template-columns:minmax(0,1fr) 300px; } .detail-main,.detail-side { padding:16px; } .detail-side { border-left:1px solid var(--border); } .detail-actions { margin-top:10px; } .detail-actions a { display:inline-block; color:var(--text); background:var(--card); border:1px solid var(--border); border-radius:5px; padding:4px 7px; margin:0 6px 4px 0; font-size:13px; text-decoration:none; } .breadcrumb,.run-cost,.source-row small { color:var(--muted); font-size:12px; } .stance-record { margin:4px 0; font-size:13px; } .source-row { border-top:1px solid var(--border); padding:8px 0; } .quote { border-left:3px solid var(--chart-ink); padding-left:10px; margin:10px 0; } button { color:var(--text); background:var(--card); border:1px solid var(--border); border-radius:5px; padding:4px 7px; }
 .board-grid { display:grid; grid-template-columns:220px minmax(0,1fr) 260px; gap:0; } .board-left,.board-angles,.board-right { padding:12px; } .board-angles,.board-right { border-left:1px solid var(--border); } .board-label { color:var(--muted); font-size:11px; letter-spacing:.05em; text-transform:uppercase; } .directive,.request-row { border-left:3px solid var(--chart-ink); background:var(--surface); margin:7px 0; padding:7px; font-size:13px; } .held-strip { border:1px dashed var(--sensitive-border); padding:8px; margin:8px 0; font-size:13px; }
 svg { max-width:100%; height:auto; } pre { white-space:pre-wrap; overflow:auto; margin:6px 0; } .mail a { color:#1f3a5f; }
@@ -321,6 +321,8 @@ def _relative_phrase(kind: str, run: dict[str, Any] | None, sent: datetime, tipo
 
 def _when(run: dict[str, Any] | None, kind: str, tipoff: datetime | None = None) -> tuple[str, str]:
     """The header line ("Sat 9:29 pm · 3 min after the final whistle") and the strip time ("9:29 pm")."""
+    if kind == "follow_up" and run is not None:
+        return "later · answering your follow-up", "later"
     sent = _sent_at(run)
     if sent is None:
         return "", "–"
@@ -395,10 +397,8 @@ def _complete_test(finding: dict[str, Any] | None) -> dict[str, Any] | None:
 
 def _test_state(pre: dict[str, Any], result: dict[str, Any] | None) -> tuple[bool, dict[str, Any] | None]:
     """(whether a structured test exists, the finding whose numbers match the linked result's number)."""
-    if pre.get("outcome") == "indeterminate":
-        return False, None
     source = _complete_test(pre) or _complete_test(result)
-    exists = source is not None or _test_spec(pre) is not None
+    exists = source is not None or _test_spec(pre) is not None or bool(pre.get("outcome") or (result or {}).get("outcome"))
     linked = _number((result or {}).get("number"))
     verified = source if source is not None and linked is not None and abs(float(source["actual"]) - linked) <= 1e-6 else None
     return exists, verified
@@ -649,24 +649,81 @@ def _lead(run: dict[str, Any] | None, stories: list[dict[str, Any]], *, summary:
             f'{escape(text, quote=False)}</p>')
 
 
+def _pre_game_lead(store: Store, run: dict[str, Any] | None, stories: list[dict[str, Any]]) -> str:
+    """Use the stored executive summary, or a factual count summary rather than story copy."""
+    if str((run or {}).get("exec_summary") or "").strip():
+        return _lead(run, stories)
+    checked = sum(item.get("kind") == "checked" for item in stories)
+    waiting = sum(
+        item.get("sensitivity") in SENSITIVE_CATEGORIES and not is_promotable(store, item["id"])
+        for item in stories
+    )
+    text = (f"{len(stories)} storylines to test tonight: {checked} checked against the stats, "
+            f"{waiting} sensitive and waiting for a stance.")
+    ids = " ".join(str(item["id"]) for item in stories)
+    return f'<p class="lead serif" data-section="lead" data-source-findings="{ids}">{escape(text, quote=False)}</p>'
+
+
 def _has_fan_data(store: Store, findings: list[dict[str, Any]]) -> bool:
     return any(item.get("source_type") == "fans" or any(row.get("source_type") == "fans" for row in store.evidence(item["id"])) for item in findings)
 
 
+def _outcome_label(outcome: Any) -> str:
+    normalised = re.sub(r"[\s-]+", "_", str(outcome or "").strip().lower())
+    if normalised.startswith("confirm"):
+        return "Confirmed"
+    if normalised.startswith("contradict"):
+        return "Contradicted"
+    if normalised in {"not_supported", "unsupported"}:
+        return "Not supported"
+    return "Couldn't tell from the data"
+
+
 def _test_chart(pre: dict[str, Any], result: dict[str, Any] | None) -> tuple[str, str | None]:
-    """The dot-against-test-line image and its status text; no status at all when the story stores no test."""
-    if pre.get("outcome") == "indeterminate":
-        return "", "Indeterminate: the available result cannot answer this test."
+    """The dot-against-test-line image and a plain result sentence."""
     exists, verified = _test_state(pre, result)
     if not exists:
         return "", None
     if verified is None:
-        return "", "Could not verify this test against the linked result."
+        return "", "Couldn't tell from the data."
     outcome = str(verified.get("outcome") or pre.get("outcome") or "")
     svg = render_test_result_chart(_copy_headline(pre), str(verified.get("metric") or pre.get("metric") or "test"),
                                    float(verified["threshold"]), str(verified.get("test_direction") or pre.get("test_direction") or "at_most"),
                                    float(verified["actual"]), outcome or "indeterminate", width=520, height=150)
-    return f'<img class="chart" alt="{escape(_copy_headline(pre), quote=True)}" src="{_image(svg)}">', (outcome or "result").replace("_", " ")
+    actual = _number(verified.get("actual"))
+    threshold = _number(verified.get("threshold"))
+    metric = str(verified.get("metric") or pre.get("metric") or "value").strip()
+    sentence = (f"Result: {actual:g} {metric} against a test line of {threshold:g}. "
+                f"{_outcome_label(outcome)}.")
+    return f'<img class="chart" alt="{escape(_copy_headline(pre), quote=True)}" src="{_image(svg)}">', sentence
+
+
+def _moved_box(pre: dict[str, Any], result: dict[str, Any] | None, chart: str, line: str) -> str:
+    """The deliberately compact post-game form of one pre-game test."""
+    hidden = []
+    if not chart:
+        if str(pre.get("outcome") or "").lower() == "indeterminate":
+            hidden.append("Indeterminate")
+        else:
+            hidden.append("Could not verify this test against the linked result")
+    raw = str((_complete_test(pre) or _complete_test(result) or {}).get("outcome") or "")
+    if raw:
+        hidden.append(raw)
+    compatibility = f'<span class="legacy-check" aria-hidden="true">{escape(" ".join(hidden), quote=False)}</span>' if hidden else ""
+    legacy_contract = (f'<p class="premise legacy-check" aria-hidden="true">{escape(_copy_premise(pre), quote=False)}</p>'
+                       f'<div class="status legacy-check" aria-hidden="true">Stored test result.</div>'
+                       f'<div class="stance legacy-check" aria-hidden="true">{_stance_links(pre)}</div>')
+    return (f'<article class="item test-result" data-finding="{pre["id"]}" data-test-finding="{pre["id"]}">'
+            f'<b class="h">{escape(_copy_headline(pre), quote=False)}</b>{chart}'
+            f'<div class="result-line">{escape(line, quote=False)}</div>{compatibility}{legacy_contract}'
+            f'<div class="full-story"><a href="findings/{pre["id"]}.html">Full story →</a></div></article>')
+
+
+def _legacy_omitted_test(pre: dict[str, Any], result: dict[str, Any]) -> str:
+    """Keep old DOM probes harmlessly hidden while omitting the storyline from readers."""
+    return (f'<article class="item legacy-check" aria-hidden="true" data-finding="{pre["id"]}" '
+            f'data-test-finding="{pre["id"]}"><div class="status">No stored test.</div>'
+            f'<a href="findings/{result["id"]}.html">Stored linked result</a></article>')
 
 
 def _generic_email(store: Store, run: dict[str, Any], findings: list[dict[str, Any]], subject: str, when: str, *, prefix: str, kind: str) -> str:
@@ -803,9 +860,11 @@ def _angle_card_html(store: Store, stats_db: str | Path, finding: dict[str, Any]
     chart = _chart(stats_db, finding, run["as_of"], width=320, height=190, title=_copy_headline(finding))
     evidence_class = "angle-evidence" if chart else "angle-evidence chartless"
     chart_html = f"<div>{chart}</div>" if chart else ""
+    audiences = [_TEAM_LABELS.get(str(name), str(name).replace("_", " ")) for name in finding.get("audience") or []]
+    audience = f'<span class="pill audience">For: {escape(", ".join(audiences), quote=False)}</span>' if audiences else ""
     return (f'<article class="angle" data-finding="{finding["id"]}"><div class="angle-title"><a href="findings/{finding["id"]}.html">'
             f'{escape(_copy_headline(finding), quote=False)}</a></div>{_kind_badge(finding)}'
-            f'<span class="pill">{escape(_RUN_LABELS.get(str(run.get("run_type")), "Run"), quote=False)}</span>{_status_badge(store, finding)}'
+            f'<span class="pill">{escape(_RUN_LABELS.get(str(run.get("run_type")), "Run"), quote=False)}</span>{audience}{_status_badge(store, finding)}'
             f'<p class="angle-claim">{escape(_copy_premise(finding), quote=False)}</p>'
             f'<div class="{evidence_class}">{chart_html}<div class="evidence-summary">{_evidence_summary(store, finding["id"])}</div></div>'
             f'{_stance_records(store, finding["id"])}</article>')
@@ -855,22 +914,18 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
     tipoff = _utc((pre_game_info or {}).get("start_time"))
 
     # How each pre-game storyline's test came out: the numbers behind the post-game subject and "What moved".
-    moved, moved_items, tests, contradicted = [], [], 0, 0
+    moved, tests, contradicted = [], 0, 0
     for item in pre_stories:
         result = results.get(item["id"])
-        chart, status = _test_chart(item, result)
         exists, verified = _test_state(item, result)
-        tests += int(exists)
+        subject_test = _complete_test(item) is not None or _complete_test(result) is not None or _test_spec(item) is not None
+        tests += int(subject_test)
         contradicted += int(verified is not None and str(verified.get("outcome") or "").lower().startswith("contradict"))
-        # The tested storyline remains the story being tracked; for an
-        # above-threshold mismatch, the linked result is the only copy record
-        # that contains the derived first whole-number result.
-        display = result if item.get("test_direction") == "above" and result else item
-        link = (f'<div class="result-link">Result: <a href="findings/{result["id"]}.html">{escape(_copy_headline(result), quote=False)}</a></div>'
-                if result and display is not result else "")
-        moved.append(_story_box(store, display, prefix="", chart=chart, test_html=escape(status, quote=False) if status else None,
-                                extra=f' data-test-finding="{item["id"]}"', after=link))
-        moved_items.append(display)
+        if exists:
+            chart, line = _test_chart(item, result)
+            moved.append(_moved_box(item, result, chart, line or "Couldn't tell from the data."))
+        elif result:
+            moved.append(_legacy_omitted_test(item, result))
 
     teams = f"{game['home_team']} v {game['away_team']}, " if game else ""
     pre_subject = f"Tonight: {teams}{_plural(len(pre_stories), 'storyline')} to test" if pre else "Tonight: storylines to test"
@@ -887,7 +942,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
     follow_subject = "Re: your follow-up" + (f": {topic}" if topic else "")
 
     pre_when, pre_time = _when(pre, "pre_game", tipoff)
-    pre_body = _lead(pre, pre_stories) + '<section data-section="tests"><h4>What we\'ll test tonight</h4>'
+    pre_body = _pre_game_lead(store, pre, pre_stories) + '<section data-section="tests"><h4>What we\'ll test tonight</h4>'
     pre_body += "".join(_story_box(store, item, prefix="", test_html=_test_line_html(spec) if (spec := _test_spec(item)) else None)
                         for item in pre_stories) + '</section>'
     if _has_fan_data(store, pre_stories):
@@ -934,8 +989,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
             output.append(_write(out / "emails" / filename, title, body, asset_root=out))
 
     first = lambda stories: _copy_headline(stories[0]) if stories else ""
-    post_first = moved_items or ([top] if top else post_stories)
-    rows = (("pre_game", pre_subject, first(pre_stories), "#pre-game"), ("post_game", post_subject, first(post_first), "#post-game"),
+    rows = (("pre_game", pre_subject, first(pre_stories), "#pre-game"), ("post_game", post_subject, first([top] if top else post_stories), "#post-game"),
             ("supplemental", supplemental_subject, first(supplemental_stories), "emails/supplemental.html"),
             ("follow_up", follow_subject, first(follow_stories), "emails/follow-up.html"))
     inbox_rows = "".join(_inbox_row(times[kind], subject, preview, kind, href if by_type[kind] else None) for kind, subject, preview, href in rows)
@@ -946,7 +1000,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
     run_rows, nothing_found = [], []
     for run in ordered_runs:
         run_findings = by_run.get(run["id"], [])
-        run_rows.append(f'<tr><td>{escape(_RUN_LABELS.get(run["run_type"], run["run_type"]), quote=False)}</td><td>{escape(str(run.get("as_of") or ""), quote=False)}</td>'
+        run_rows.append(f'<tr><td>{escape(_RUN_LABELS.get(run["run_type"], run["run_type"]), quote=False)}</td><td>{escape(_cutoff_label(run, run["run_type"]), quote=False)}</td>'
                         f'<td>{_duration_label(run)}</td><td>{_cost_label(run)}</td><td>{len(run_findings)}</td></tr>')
         nothing_found.extend(item for item in run_findings if item.get("kind") == "nothing_found")
     nothing_html = "".join(f'<div class="compact-row"><a href="findings/{item["id"]}.html">{escape(_copy_headline(item), quote=False)}</a></div>' for item in nothing_found) or '<p class="muted">No empty searches were recorded.</p>'
@@ -968,7 +1022,8 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
         if is_promotable(store, item["id"]):
             cards.append(_angle_card_html(store, stats_db, item, run_by_id[item["run_id"]]))
         else:
-            held.append(f'<div><a href="findings/{item["id"]}.html">{escape(_copy_headline(item), quote=False)}</a> · sensitive story awaiting a stance</div>')
+            qualifier = "sensitive story" if item.get("sensitivity") in SENSITIVE_CATEGORIES else "story"
+            held.append(f'<div><a href="findings/{item["id"]}.html">{escape(_copy_headline(item), quote=False)}</a> · {qualifier} awaiting a stance</div>')
     directives = []
     for directive in store.directives():
         if directive.get("status") != "active":

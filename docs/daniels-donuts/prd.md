@@ -16,10 +16,10 @@ Everyone on the list is internal.
 
 | Who | What they get | What they do with it |
 |---|---|---|
-| GM | The whole email, Monday 7 am | Sees what's changing across the whole network, and sets stances |
+| GM | The whole email, Monday 7 am | Sees what's changing across the whole network, and comments |
 | Operations | The whole email | Picks up roster, stock and waste threads |
-| Area managers | The whole email, and named-staff detail for their region | Follows up stores, escalations and praise |
-| Marketing | The whole email, and the risk check on next week's promotions | Adjusts or holds promotions |
+| Area managers | The whole email, and named-staff detail for their region | Follows up stores, escalations and praise, and signs off drafted review replies |
+| Marketing | The whole email, and the risk check on next week's promotions | Adjusts or holds promotions, and signs off drafted promotions |
 | Product | The whole email | Range, freshness and new-item threads |
 | Store managers | Their own store's section | Acts on what changed at their store |
 | Food-safety lead | Food-safety mentions the day they're coded | Reviews and responds before anything public happens |
@@ -77,9 +77,9 @@ Code runs a lead, five specialists and a judge, each as its own Agent SDK sessio
 | Product | Range, freshness, missing items and how new items are received |
 | Marketing | How promotions and member deals show up in reviews and sales, plus a risk check on next week's promotions: which stores and hours they will load, and whether rosters and stock are set for them |
 | Context | Weather, holidays, events and competitor openings next to the stores and days they touch |
-| Judge | Ranks the stories, with food safety first, and polices causal language |
+| Judge | Ranks the insights, with food safety first, and polices causal language |
 
-The judge allows three labels and no others. "coincides with" means two things happened together. "consistent with" means the baseline and context were checked and fit, but other explanations remain. "tested" means a comparison against matched stores or a planned trial was run. A finding that says "caused" goes back.
+The judge allows three labels and no others. "coincides with" means two things happened together. "consistent with" means the baseline and context were checked and fit, but other explanations remain. "tested" means a comparison against matched stores or a planned trial was run. An insight that says "caused" goes back.
 
 ## Threads
 
@@ -96,10 +96,10 @@ The desk follows six kinds of thread. The [sample email](../../site/daniels-donu
 
 Privacy, accuracy and quality control are built in from the first run.
 
-- **Recheck every number.** Code recomputes each number in the email from the source tables before it goes out. A mismatch drops the story.
+- **Recheck every number.** Code recomputes each number in the email from the source tables before it goes out. A mismatch drops the insight.
 - **A minimum sample per store.** A store needs at least 10 reviews in the window before the desk reports its theme shares. Below that it says so.
-- **Named staff are sensitive.** Staff names go only to the area manager. The story itself goes to the list without them, under a sensitive tag, and never feeds performance management automatically. Staff names are also stripped from anything drafted for outside.
-- **A stance and a comment on every story.** Anyone on the list can mark a story push it, use it if it comes up, or steer away, with a comment. Drafted replies and promotions need a recorded push or use-if-raised stance first.
+- **Named staff are sensitive.** Staff names go only to the area manager. The insight itself goes to the list without them, under a sensitive tag, and never feeds performance management automatically. Staff names are also stripped from anything drafted for outside.
+- **Comments on every insight, and a sign-off before anything goes out.** Anyone on the list can comment on any insight. Nothing drafted for outside, whether a review reply or a promotion, is allowed until a named person records a sign-off for that insight, outside the email: the area manager for replies, marketing for promotions.
 - **Causal language.** Every explanation carries one of the judge's three labels.
 
 ## The weekly email
@@ -108,12 +108,12 @@ The email goes at 7 am on Monday to the GM, operations, area managers, marketing
 
 1. a short lead
 2. what changed across the network, with a theme-mix donut
-3. the threads the desk followed, each as a story box with a premise, the number, its causal label, a chart where it earns one, and a suggestion
-4. sensitive stories, food safety first
+3. the threads the desk followed, each as an insight card with a premise, the number, its causal label, a chart where it earns one, and a suggestion
+4. sensitive insights, food safety first
 5. a section for each store manager
 6. questions for Thursday's ops meeting
 
-Each story has stance links. In the demo they are `mailto:` links to `review-desk@example.com`, mirroring the NBL desk. In production a reply would arrive through an inbound-email webhook (for example n8n or Power Automate), record the stance, and trigger a follow-up run.
+Each insight has one Comment link and a link to its evidence. In the demo the Comment link is a `mailto:` link to `review-desk@example.com`. In production a reply would arrive through an inbound-email webhook (for example n8n or Power Automate), be stored against the insight, and reach the next run. Sign-offs for drafts happen outside the email, so a reply can't approve anything by accident.
 
 ## Meeting mode
 
@@ -128,7 +128,7 @@ The NBL desk already shows subagents, an in-process MCP server, logging hooks, `
 | Structured outputs (`output_format` with a JSON schema) | Customer voice returns theme coding that must validate against `THEME_CODING_SCHEMA`. Code, not the model, counts the shares. The agent returns the result through a `StructuredOutput` tool that Claude Code adds, so that tool is pre-approved for the role's `dontAsk` mode. A session that can't produce valid output ends with `error_max_structured_output_retries`, and the week's coding is retried, never guessed | `agents.py` (customer voice), `schema.py` | https://code.claude.com/docs/en/agent-sdk/structured-outputs |
 | Message Batches | Bulk coding of a backlog, or a full re-code after the theme list changes, at half the standard price. The module builds the request list only, with each review sent without its author's name | `batches.py` | https://platform.claude.com/docs/en/build-with-claude/batch-processing |
 | Sandbox | Operations runs its stats in Python through Bash inside the sandbox. If the sandbox can't start, the session refuses to run (`failIfUnavailable`). Commands can't retry outside it. No host is allow-listed, and `strictAllowlist` makes the sandbox proxy refuse every other host in every permission mode, so the network is off. The SDK passes these keys through `--settings`, which can set any user-scope key. Writes go to the temp directory, not the agent folder. The sandbox covers shell commands only, so WebFetch and WebSearch are disallowed as well | `agents.py` (operations) | https://code.claude.com/docs/en/agent-sdk/python, https://code.claude.com/docs/en/sandboxing and https://code.claude.com/docs/en/settings |
-| Approval callback (`can_use_tool`) | `post_review_reply` and `draft_promo` are refused unless a recorded stance approves that action for that story. When one does, staff names are stripped through `updated_input`. In Python the callback needs a streaming prompt and a no-op `PreToolUse` hook to keep the stream open | `approvals.py` | https://code.claude.com/docs/en/agent-sdk/user-input |
+| Approval callback (`can_use_tool`) | `post_review_reply` and `draft_promo` are refused unless a named person has recorded a sign-off for that action on that insight. When one does, staff names are stripped through `updated_input`. In Python the callback needs a streaming prompt and a no-op `PreToolUse` hook to keep the stream open | `approvals.py` | https://code.claude.com/docs/en/agent-sdk/user-input |
 | Sessions (`resume`, `fork_session`) | Meeting mode resumes the week's session; competing explanations fork it | `agents.py` (`meeting_options`, `fork_options`) | https://code.claude.com/docs/en/agent-sdk/sessions |
 | Skills | `theme-coding` and `promo-effect` as SKILL.md packages: a small library of reusable prompt templates and workflows that every role shares | `agent/.claude/skills/` | https://code.claude.com/docs/en/agent-sdk/skills and https://code.claude.com/docs/en/agent-sdk/claude-code-features |
 | Behaviour in a live run | Two settings are checked against the docs and the bundled CLI but haven't been run live. First, `failIfUnavailable`, `strictAllowlist` and `filesystem` aren't in the Python SDK's `SandboxSettings` type, though they are in the bundled CLI. Second, it is unverified whether customer voice's explicit `tools` list leaves the `StructuredOutput` tool in place | the offline tests | unverified |
@@ -137,9 +137,9 @@ The NBL desk already shows subagents, an in-process MCP server, logging hooks, `
 
 ## Roadmap
 
-1. **A 5-store pilot**, Google reviews and POS only, compared with a human analyst's read of the same weeks. It asks: did the desk find what the analyst found, what did it add, and did any story change a decision?
+1. **A 5-store pilot**, Google reviews and POS only, compared with a human analyst's read of the same weeks. It asks: did the desk find what the analyst found, what did it add, and did any insight change a decision?
 2. **All stores and sources**, with delivery platforms, social, the complaints inbox and surveys, plus a pack for the weekly ops meeting.
-3. **Drafted actions**, each behind a stance: whole campaigns, staff training modules, roster suggestions, waste and labour cost analysis, and review replies.
+3. **Drafted actions**, each behind a sign-off: whole campaigns, staff training modules, roster suggestions, waste and labour cost analysis, and review replies.
 4. **Strategy**: menu changes, pricing tests and new-site scoring, and checking whether the actions taken moved the numbers.
 
 ## What LK provides
@@ -147,16 +147,16 @@ The NBL desk already shows subagents, an in-process MCP server, logging hooks, `
 - Owner access to the Business Profile account, and merchant access to the delivery platforms and DD's social accounts.
 - Nightly exports from POS, rostering, waste and stock, the promotions calendar, the loyalty platform and campaign tools.
 - A store register: number, region, format and manager start dates.
-- The recipient list, the roles that can set stances, and a named food-safety contact.
+- The recipient list, the people who sign off drafts, and a named food-safety contact.
 - Privacy rules for customer and staff data, including retention.
 - An analyst's time for the pilot comparison.
 
 ## Risks
 
 - **Privacy.** Reviews carry customers' names and sometimes details of their visit. Reviewer names stay out of model requests, data is kept for an agreed period, and only DD's own social accounts are read.
-- **Staff.** Named praise can feel like surveillance, and named complaints can feel like a case being built. Staff names go only to the area manager. The list sees the story without them, under a sensitive tag, and it never feeds performance management automatically.
+- **Staff.** Named praise can feel like surveillance, and named complaints can feel like a case being built. Staff names go only to the area manager. The list sees the insight without them, under a sensitive tag, and it never feeds performance management automatically.
 - **Causation.** Reviews and sales move for many reasons at once. The desk links and suggests, and its labels say how far each link has been checked. A suggestion comes with the trial that would test it.
-- **Reviews as instructions.** Review text is untrusted input. A review can't reach a write tool, because drafted replies and promotions need an approval record.
+- **Reviews as instructions.** Review text is untrusted input. A review can't reach a write tool, because drafted replies and promotions need a named sign-off.
 
 ## The offer
 

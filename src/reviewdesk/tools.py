@@ -79,10 +79,10 @@ def desk_tools(desk: DeskData) -> list[Any]:
         "Draft a public reply to a customer review. It is recorded as a draft and never posted from here.",
         _object(
             {
-                "review_id": {"type": "string"}, "story_id": {"type": "string"},
+                "review_id": {"type": "string"}, "finding_id": {"type": "string"},
                 "text": {"type": "string"}, "approval_id": {"type": "string"},
             },
-            ["review_id", "story_id", "text", "approval_id"],
+            ["review_id", "finding_id", "text", "approval_id"],
         ),
     )
     async def post_review_reply(args: dict[str, Any]) -> dict[str, Any]:
@@ -93,10 +93,10 @@ def desk_tools(desk: DeskData) -> list[Any]:
         "Draft a promotion for some stores. It is recorded as a draft and never sent from here.",
         _object(
             {
-                "story_id": {"type": "string"}, "stores": {"type": "array", "items": {"type": "integer"}},
+                "finding_id": {"type": "string"}, "stores": {"type": "array", "items": {"type": "integer"}},
                 "offer": {"type": "string"}, "rationale": {"type": "string"}, "approval_id": {"type": "string"},
             },
-            ["story_id", "stores", "offer", "rationale", "approval_id"],
+            ["finding_id", "stores", "offer", "rationale", "approval_id"],
         ),
     )
     async def draft_promo(args: dict[str, Any]) -> dict[str, Any]:

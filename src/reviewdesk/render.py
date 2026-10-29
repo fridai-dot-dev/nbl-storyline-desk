@@ -14,8 +14,7 @@ from urllib.parse import urlencode
 
 from .charts import render_donut, render_line, render_scatter
 
-STANCE_ADDRESS = "review-desk@example.com"
-STANCES = (("Push it", "push"), ("Use if it comes up", "use if raised"), ("Steer away", "steer away"), ("Comment", "comment"))
+COMMENT_ADDRESS = "review-desk@example.com"
 CHART_FILES = {"theme_mix": "theme-mix.svg", "rating_trend": "rating-trend.svg", "store_scatter": "store-scatter.svg"}
 
 DD_CSS = (
@@ -27,6 +26,8 @@ DD_CSS = (
     ".evidence .causal{color:inherit}"
     ".suggestion{margin-top:6px;border-left:3px solid #1f3a5f;padding-left:8px;font-size:12px}"
     ".escalated{margin-top:6px;border:1px solid #e3a96f;background:#fdf0e1;color:#9a4a00;padding:5px 8px;font-size:12px}"
+    ".comment{font-size:12px;margin-top:6px;padding-top:5px;border-top:1px solid #cfcfcf}"
+    ".evidence-link{font-size:12px;margin-top:6px}"
     ".store-section{border-top:1px solid #cfcfcf;padding-top:8px;margin-top:10px}"
     ".store-section h5{margin:0 0 4px;font-size:13px}"
     ".evidence{background:var(--card,#fff);border:1px solid var(--border,#d9d9d9);padding:12px 16px;margin:0 0 12px;font-size:14px}"
@@ -55,12 +56,9 @@ def _chart_svgs(data: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def _stance_links(finding: dict[str, Any]) -> str:
-    links = []
-    for label, action in STANCES:
-        query = urlencode({"subject": f"{action} on story {finding['id']}: {finding['headline']}"})
-        links.append(f'<a href="mailto:{STANCE_ADDRESS}?{_a(query)}">{label}</a>')
-    return "".join(links)
+def _comment_link(finding: dict[str, Any]) -> str:
+    query = urlencode({"subject": f"Comment on insight {finding['id']}: {finding['headline']}"})
+    return f'<a href="mailto:{COMMENT_ADDRESS}?{_a(query)}">Comment</a>'
 
 
 def _story_box(data: dict[str, Any], finding: dict[str, Any]) -> str:
@@ -83,8 +81,8 @@ def _story_box(data: dict[str, Any], finding: dict[str, Any]) -> str:
         f'<div class="number"><b>{_t(value)}</b>{joiner}{_t(label)}</div>'
         f'<div class="test">{_t(finding["status"])}{causal}</div>'
         f'{escalated}{chart}{suggestion}'
-        f'<div class="stance">{_stance_links(finding)}</div>'
-        f'<div class="full-story"><a href="#evidence-{_a(finding["id"])}">Full story →</a></div></article>'
+        f'<div class="comment">{_comment_link(finding)}</div>'
+        f'<div class="evidence-link"><a href="#evidence-{_a(finding["id"])}">The evidence →</a></div></article>'
     )
 
 
@@ -106,7 +104,7 @@ def _store_sections(data: dict[str, Any]) -> str:
     if not blocks:
         return ""
     return ('<section data-section="store-managers"><h4>For store managers</h4>'
-            "<p>Each store manager's section lists the stories that touch their store, with the evidence one link away.</p>"
+            "<p>Each store manager's section lists the insights that touch their store, with the evidence one link away.</p>"
             + "".join(blocks) + "</section>")
 
 
@@ -132,11 +130,11 @@ def _mail(data: dict[str, Any]) -> str:
         f'<div class="body"><p class="lead serif" data-section="lead">{_t(data["lead"])}</p>'
         + _boxes_section(data, "network", "Across the network", network)
         + _boxes_section(data, "threads", "What else changed", threads)
-        + _boxes_section(data, "sensitive", "Sensitive stories: set a stance", sensitive)
+        + _boxes_section(data, "sensitive", "Sensitive insights", sensitive)
         + _store_sections(data)
         + _meeting(data)
-        + '<div class="reply-box" data-section="reply"><b>Reply to steer this week\'s work</b><br>'
-          'Ask for anything in plain words, or set a stance on any story above.</div></div>'
+        + '<div class="reply-box" data-section="reply"><b>Reply to steer next week\'s run</b><br>'
+          'Ask for anything in plain words, or comment on any insight above.</div></div>'
         + f'<div class="foot" data-section="footer">{footer}</div></section>'
     )
 
@@ -151,7 +149,7 @@ def _evidence(data: dict[str, Any]) -> str:
             f'<p>Status: {_t(finding["status"])}</p><p>Judge\'s label: <span class="causal">{causal}</span></p>'
             f'<ul>{items}</ul><p><a href="#weekly">Back to the email</a></p></div>'
         )
-    return ('<section data-region="evidence"><h2>The evidence behind each story</h2>' + "".join(entries) + "</section>")
+    return ('<section data-region="evidence"><h2>The evidence behind each insight</h2>' + "".join(entries) + "</section>")
 
 
 def _inbox_row(data: dict[str, Any]) -> str:
@@ -164,8 +162,8 @@ def _inbox_row(data: dict[str, Any]) -> str:
 def _page(data: dict[str, Any]) -> str:
     banner = ('<div class="illustrative" data-region="banner">Illustrative data: a made-up week showing what the Review Desk '
               "would send Daniel's Donuts. Every figure, quote and store detail here is invented for the sample.</div>")
-    note = ('<p class="internal-note" data-region="internal-note">Everyone on this list is internal, and anyone on it can '
-            "set a stance on any story: push it, use it if it comes up, or steer away, with a comment. Each explanation "
+    note = ('<p class="internal-note" data-region="internal-note">Everyone on this list is internal. Use the Comment link '
+            "on any insight to reply to the desk. Each explanation "
             "carries the judge's label for how far it has been checked: coincides with (the two happened together), "
             "consistent with (the data fits, but other causes aren't ruled out) or tested (checked against a comparison).</p>")
     heading = f"<h1>Daniel's Donuts · {_t(data['week']['label'])}</h1>"

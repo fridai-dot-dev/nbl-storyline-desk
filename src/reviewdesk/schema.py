@@ -112,7 +112,7 @@ FINDING_SCHEMA: dict[str, Any] = {
         # Named staff are sensitive and never feed performance management automatically.
         {"if": {"properties": {"thread": {"const": "praise"}}},
          "then": {"properties": {"sensitivity": {"const": "named staff"}}}},
-        # Explanations carry the judge's causal label; descriptive stories may not.
+        # Explanations carry the judge's causal label; descriptive insights may not.
         {"if": {"properties": {"thread": {"enum": ["spike", "praise", "promo_side_effect", "data_first"]}}},
          "then": {"properties": {"causal": {"enum": list(CAUSAL_LABELS)}}}},
     ],

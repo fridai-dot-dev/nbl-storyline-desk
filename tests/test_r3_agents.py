@@ -110,10 +110,12 @@ def test_r3_row_42_desk_tools_record_drafts_and_never_send():
     bad = asyncio.run(tools["write_finding"].handler({"finding": {"id": "dd-10"}}))
     assert bad.get("is_error") is True and len(desk.findings) == 1
 
-    asyncio.run(tools["post_review_reply"].handler({"review_id": "gbp-31-0207", "story_id": "dd-03",
+    asyncio.run(tools["post_review_reply"].handler({"review_id": "gbp-31-0207", "finding_id": "dd-03",
                                                      "text": "Thanks!", "approval_id": "appr-0001"}))
-    asyncio.run(tools["draft_promo"].handler({"story_id": "dd-04", "stores": [14], "offer": "o",
+    asyncio.run(tools["draft_promo"].handler({"finding_id": "dd-04", "stores": [14], "offer": "o",
                                                "rationale": "r", "approval_id": "appr-0002"}))
+    for name in ("post_review_reply", "draft_promo"):
+        assert {"finding_id", "approval_id"} <= set(tools[name].input_schema["required"]), name
     assert [item["tool"] for item in desk.outbox] == ["post_review_reply", "draft_promo"]
     assert all(item["status"] == "draft" for item in desk.outbox)
 
@@ -193,26 +195,28 @@ def _callback():
 
 
 @pytest.mark.parametrize("tool,payload", [
-    (f"{R}post_review_reply", {"review_id": "gbp-31-0207", "story_id": "dd-03", "text": "Thanks!"}),
-    (f"{R}post_review_reply", {"review_id": "gbp-31-0207", "story_id": "dd-03", "text": "Thanks!", "approval_id": "appr-9999"}),
-    (f"{R}post_review_reply", {"review_id": "gbp-31-0207", "story_id": "dd-03", "text": "Thanks!", "approval_id": "appr-0002"}),
-    (f"{R}draft_promo", {"story_id": "dd-02", "stores": [12], "offer": "o", "rationale": "r", "approval_id": "appr-0003"}),
-    (f"{R}draft_promo", {"story_id": "dd-02", "stores": [12], "offer": "o", "rationale": "r", "approval_id": "appr-0002"}),
-    (f"{R}draft_promo", {"story_id": "dd-04", "stores": [14], "offer": "o", "rationale": "r"}),
+    (f"{R}post_review_reply", {"review_id": "gbp-31-0207", "finding_id": "dd-03", "text": "Thanks!"}),
+    (f"{R}post_review_reply", {"review_id": "gbp-31-0207", "finding_id": "dd-03", "text": "Thanks!", "approval_id": "appr-9999"}),
+    (f"{R}post_review_reply", {"review_id": "gbp-31-0207", "finding_id": "dd-03", "text": "Thanks!", "approval_id": "appr-0002"}),
+    (f"{R}draft_promo", {"finding_id": "dd-02", "stores": [12], "offer": "o", "rationale": "r", "approval_id": "appr-0003"}),
+    (f"{R}draft_promo", {"finding_id": "dd-02", "stores": [12], "offer": "o", "rationale": "r", "approval_id": "appr-0002"}),
+    (f"{R}draft_promo", {"finding_id": "dd-04", "stores": [14], "offer": "o", "rationale": "r", "approval_id": "appr-0001"}),
+    (f"{R}draft_promo", {"finding_id": "dd-04", "stores": [14], "offer": "o", "rationale": "r"}),
 ])
-def test_r3_row_44_write_tools_are_denied_without_a_matching_approval_record(tool, payload):
+def test_r3_row_44_write_tools_are_denied_without_a_matching_sign_off(tool, payload):
+    """A sign-off, recorded outside the email, names the tool, the insight and who signed off (appr-0003 names nobody)."""
     result = asyncio.run(_callback()(tool, payload, _ctx()))
-    assert isinstance(result, PermissionResultDeny) and "approval" in result.message.lower()
+    assert isinstance(result, PermissionResultDeny) and "sign-off" in result.message.lower()
 
 
 @pytest.mark.parametrize("tool", ["Bash", "WebFetch", f"{R}delete_reviews", "post_review_reply"])
 def test_r3_row_44_anything_else_reaching_the_callback_is_denied(tool):
-    result = asyncio.run(_callback()(tool, {"approval_id": "appr-0001", "story_id": "dd-03"}, _ctx()))
+    result = asyncio.run(_callback()(tool, {"approval_id": "appr-0001", "finding_id": "dd-03"}, _ctx()))
     assert isinstance(result, PermissionResultDeny)
 
 
 def test_r3_row_44_approved_reply_is_allowed_with_staff_names_stripped():
-    payload = {"review_id": "gbp-31-0207", "story_id": "dd-03", "approval_id": "appr-0001",
+    payload = {"review_id": "gbp-31-0207", "finding_id": "dd-03", "approval_id": "appr-0001",
                "text": "Thanks for the kind words about Priya! PRIYA's team and Mele Tupou say hi. Priyanka too.",
                "notes": ["Tomasz rostered", {"cc": "jordan"}]}
     original = json.loads(json.dumps(payload))
@@ -227,7 +231,7 @@ def test_r3_row_44_approved_reply_is_allowed_with_staff_names_stripped():
 
 
 def test_r3_row_44_approved_promo_is_allowed():
-    payload = {"story_id": "dd-04", "stores": [14, 22], "offer": "Add a lunch staff hour", "rationale": "waits", "approval_id": "appr-0002"}
+    payload = {"finding_id": "dd-04", "stores": [14, 22], "offer": "Add a lunch staff hour", "rationale": "waits", "approval_id": "appr-0002"}
     result = asyncio.run(_callback()(f"{R}draft_promo", payload, _ctx()))
     assert isinstance(result, PermissionResultAllow) and result.updated_input == payload
 

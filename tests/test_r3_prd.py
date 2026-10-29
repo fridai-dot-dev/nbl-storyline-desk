@@ -59,6 +59,13 @@ def test_r3_copy_no_we_without_a_subject(prd):
     assert not re.findall(r"\bwe\b|\bwe'", prd, re.I)
 
 
+def test_r3_copy_no_nbl_desk_framing(prd):
+    """Bart's call, 2026-10-30: no stories or editorial stances; insights take comments, drafts take a sign-off."""
+    framing = re.findall(r"\b(?:stances?|push it|steer away|use (?:it )?if it comes up|stor(?:y|ies))\b", prd, re.I)
+    assert framing == [], framing
+    assert re.search(r"\binsights?\b", prd)
+
+
 def test_r3_row_39_framing_uses_the_approved_description(prd):
     assert DD_DESCRIPTION in _section(prd, "Framing")
 
@@ -103,7 +110,7 @@ def test_r3_row_39_threads_gates_email_and_meeting_mode(prd):
     for idea in ("spike", "training", "side effect", "data first", "allergen", "quiet"):
         assert idea in threads, idea
     gates = _section(prd, "Gates").lower()
-    for idea in ("recheck", "minimum", "named staff", "performance", "stance", "comment"):
+    for idea in ("recheck", "minimum", "named staff", "performance", "comment", "sign-off"):
         assert idea in gates, idea
     email = _section(prd, "weekly email").lower()
     assert "monday" in email and "7 am" in email and "store manager" in email

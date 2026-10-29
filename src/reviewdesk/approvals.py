@@ -11,7 +11,6 @@ from claude_agent_sdk.types import PermissionResultAllow, PermissionResultDeny
 from .tools import WRITE_TOOLS, tool_id
 
 STAFF_PLACEHOLDER = "[staff member]"
-APPROVED_STANCES = ("push", "use_if_raised")
 
 
 def strip_staff_names(value: Any, staff_names: Iterable[str]) -> Any:
@@ -40,14 +39,16 @@ def make_approval_callback(approvals: Iterable[Mapping[str, Any]], staff_names: 
         short = write_tools.get(tool_name)
         if short is None:
             return PermissionResultDeny(message=f"{tool_name} is not a tool this desk allows.")
-        story_id = input_data.get("story_id")
-        approved = story_id is not None and any(
+        # A sign-off is recorded outside the email by a named person, for one tool on one insight.
+        finding_id = input_data.get("finding_id")
+        signed_off = finding_id is not None and any(
             record.get("id") == input_data.get("approval_id") and record.get("tool") == short
-            and record.get("story_id") == story_id and record.get("stance") in APPROVED_STANCES
+            and record.get("finding_id") == finding_id and str(record.get("signed_off_by") or "").strip()
             for record in records
         )
-        if not approved:
-            return PermissionResultDeny(message=f"{short} needs an approval record for this story: none matches this tool, story and stance.")
+        if not signed_off:
+            return PermissionResultDeny(message=f"{short} needs a sign-off for this insight: none names this tool, "
+                                                "this insight and who signed it off.")
         return PermissionResultAllow(updated_input=strip_staff_names(input_data, names))
 
     return can_use_tool

@@ -1,4 +1,8 @@
-"""R3 checks for the Daniel's Donuts sample weekly email (decision rows 40, 41, 54-DD, 58-DD and the DD copy rules)."""
+"""R3 checks for the Daniel's Donuts sample weekly email (decision rows 40, 41, 54-DD, 58-DD and the DD copy rules).
+
+Bart's call, 2026-10-30: the cards keep the §4B layout but not the NBL stance model or "story" wording.
+Each insight card has one Comment link; drafting approval is a separate sign-off outside the email.
+"""
 
 from __future__ import annotations
 
@@ -15,8 +19,9 @@ from test_r3_support import (
 )
 
 SECTION_ORDER = ["lead", "network", "threads", "sensitive", "store-managers", "meeting", "reply", "footer"]
-STANCE_LABELS = ["Push it", "Use if it comes up", "Steer away", "Comment"]
 CHART_FORMS = {"theme_mix": "donut", "rating_trend": "line", "store_scatter": "scatter"}
+# The NBL desk's media framing (stories, editorial stances) means nothing to a donut chain's managers (lesson 12).
+NBL_FRAMING = re.compile(r"\b(?:stances?|push it|steer away|use (?:it )?if it comes up|stor(?:y|ies))\b", re.I)
 
 
 @pytest.fixture(scope="module")
@@ -139,11 +144,9 @@ def test_r3_row_40_page_uses_the_inbox_format(data, root, mail):
     row = one(one(root, data_region="inbox-strip"), cls="row", data_run_type="weekly")
     assert data["subject"] in row.text() and "Review Desk" in row.text()
     note = one(root, data_region="internal-note").text().lower()
-    for stance in ("push", "use it if it comes up", "steer away", "comment"):
-        assert stance in note
+    assert "comment" in note and "insight" in note
     for label in ("coincides with", "consistent with", "tested"):
-        assert label in note, "the judge's labels are explained before any story uses them"
-    assert "communications" not in note, "a stance is how the business decides, not a comms setting (lesson 10)"
+        assert label in note, "the judge's labels are explained before any insight uses them"
     head = one(mail, cls="head").text()
     assert f"Subject: {data['subject']}" in head and "From: Review Desk" in head
     assert f"To: {data['recipients']}" in head and data["sent"] in head
@@ -155,7 +158,7 @@ def test_r3_row_40_email_sections_in_order(mail):
     assert order == SECTION_ORDER
 
 
-def test_r3_row_40_every_finding_is_one_story_box_with_the_full_4b_anatomy(data, root, mail):
+def test_r3_row_40_every_finding_is_one_insight_card_with_its_evidence_and_a_comment_link(data, root, mail):
     boxes = {box.attrs["data-finding"]: box for box in _boxes(mail)}
     assert sorted(boxes) == sorted(finding["id"] for finding in data["findings"])
     assert len(_boxes(mail)) == len(boxes), "each finding renders exactly once"
@@ -171,25 +174,25 @@ def test_r3_row_40_every_finding_is_one_story_box_with_the_full_4b_anatomy(data,
             assert one(box, cls="causal").text() == finding["causal"]
         if finding["suggestion"]:
             assert one(box, cls="suggestion").text() == finding["suggestion"]
-        links = one(box, cls="stance").descendants("a")
-        assert [link.text() for link in links] == STANCE_LABELS
-        for link in links:
-            parsed = urlsplit(link.attrs["href"])
-            assert parsed.scheme == "mailto" and parsed.path == "review-desk@example.com"
-            subject = parse_qs(parsed.query)["subject"][0]
-            assert finding["id"] in subject and finding["headline"] in subject
-        full = one(box, cls="full-story").descendants("a")
-        assert len(full) == 1 and full[0].attrs["href"] == f"#evidence-{finding['id']}"
+        links = one(box, cls="comment").descendants("a")
+        assert [link.text() for link in links] == ["Comment"], "one Comment link per card; no stance links"
+        parsed = urlsplit(links[0].attrs["href"])
+        assert parsed.scheme == "mailto" and parsed.path == "review-desk@example.com"
+        assert parse_qs(parsed.query)["subject"][0] == f"Comment on insight {finding['id']}: {finding['headline']}"
+        assert [link.text() for link in box.descendants("a")] == ["Comment", "The evidence →"]
+        evidence_link = one(box, cls="evidence-link").descendants("a")
+        assert len(evidence_link) == 1 and evidence_link[0].attrs["href"] == f"#evidence-{finding['id']}"
         evidence = one(root, id=f"evidence-{finding['id']}")
         for item in finding["evidence"]:
             assert item["detail"] in evidence.text()
 
 
-def test_r3_row_40_story_boxes_sit_in_their_sections(data, mail):
+def test_r3_row_40_insight_cards_sit_in_their_sections(data, mail):
     def ids(section):
         return [box.attrs["data-finding"] for box in _boxes(one(mail, data_section=section))]
 
     by_thread = {finding["id"]: finding for finding in data["findings"]}
+    assert one(one(mail, data_section="sensitive"), "h4").text() == "Sensitive insights"
     assert all(by_thread[fid]["thread"] == "network" for fid in ids("network"))
     assert {fid for fid in ids("sensitive")} == {f["id"] for f in data["findings"] if f["sensitivity"]}
     assert all(by_thread[fid]["sensitivity"] is None and by_thread[fid]["thread"] != "network" for fid in ids("threads"))
@@ -280,10 +283,13 @@ def test_r3_copy_rules_on_the_page(data, root):
     assert not re.findall(r"\bwe\b|\bwe'", text, re.I)
     assert "Albury" not in text
     assert unnumbered_store_mentions(text, _registry(data)) == []
+    framing = NBL_FRAMING.findall(text + " " + one(root, "title").text())
+    assert framing == [], f"NBL desk framing on the Daniel's Donuts page: {framing}"
 
 
 def test_r3_copy_rules_in_the_data(data):
     flat = str(data)
+    assert NBL_FRAMING.findall(flat) == []
     assert unnumbered_store_mentions(flat, _registry(data)) == []
     assert not re.findall(r"\bwe\b|\bwe'", flat, re.I)
     assert not re.search(r"\bcaused\b|\bbecause of\b", flat, re.I)

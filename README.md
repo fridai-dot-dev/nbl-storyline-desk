@@ -60,7 +60,7 @@ Decide, prove, build, review, then run on real data early:
 3. **Build and review.** Codex built against those checks in small rounds, and a second model reviewed each round adversarially.
 4. **Live runs.** These exposed problems the offline tests couldn't, such as specialists being abandoned mid-run and search hiding the fourth quarter. Each one became a failing check, then a fix.
 
-There are 155 offline checks and 3 live checks, and all pass. The [build log](docs/build-log.md) has the timeline, and the [review trail](docs/reviews/README.md) has every review and prompt.
+There are 160 offline checks and 3 live checks, and all pass. The [build log](docs/build-log.md) has the timeline, and the [review trail](docs/reviews/README.md) has every review and prompt.
 
 ## Docs
 

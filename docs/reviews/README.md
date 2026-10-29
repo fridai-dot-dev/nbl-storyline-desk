@@ -24,6 +24,7 @@ History was rewritten once before publishing, to remove private working notes. E
 - `codex-prompts/publish.md` — Codex prompt for pre-publish escaping, run-cost and replay-timing fixes.
 - `codex-prompts/landing.md` — Codex prompt for visible sign-offs, re-judging separation and the guided landing page.
 - `codex-prompts/final-fix.md` — Sol fix-round prompt for the final pre-publication review.
+- `codex-prompts/headline.md` — Terra light-path prompt: record headlines carry their claim's data boundary.
 - `codex-reports/build.md` — Codex build report; it records the initial implementation and 75 passing checks.
 - `codex-reports/fix.md` — Codex fix report; it records the Sol fix round and 95 passing checks.
 - `codex-reports/light1.md` — Codex report for smoke-run logging and source validation work.
@@ -40,3 +41,4 @@ History was rewritten once before publishing, to remove private working notes. E
 - `codex-reports/publish.md` — Codex report for the pre-publish fixes.
 - `codex-reports/landing.md` — Codex report for the landing-page round.
 - `codex-reports/final-fix.md` — Sol's fix-round report for the final review; it records the contradicting older check it would not edit.
+- `codex-reports/headline.md` — Terra's report for the record-headline boundary fix.

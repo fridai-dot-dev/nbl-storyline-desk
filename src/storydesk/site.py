@@ -9,6 +9,7 @@ from typing import Any
 
 from .charts import render_bar_chart, render_line_chart
 from .data import as_of_connection
+from .gates import _BOUNDARY, _RECORD_WORD
 from .sqlsafe import validate_safe_sql
 from .store import Store
 from .tools import ToolContext, get_game
@@ -182,7 +183,12 @@ def headline_for(finding: dict[str, Any]) -> str:
     """Return the editor-supplied headline, or a compact, readable claim fallback."""
     headline = finding.get("headline")
     if isinstance(headline, str) and headline.strip():
-        return headline.strip()
+        headline = headline.strip()
+        claim = str(finding.get("claim") or "")
+        boundary = _BOUNDARY.search(claim)
+        if _RECORD_WORD.search(headline) and boundary and not _BOUNDARY.search(headline):
+            return f"{headline} ({boundary.group()})"
+        return headline
     claim = str(finding.get("claim") or "")
     while _PARENTHETICAL.search(claim):
         claim = _PARENTHETICAL.sub("", claim)

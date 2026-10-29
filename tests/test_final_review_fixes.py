@@ -212,3 +212,34 @@ def test_committed_site_links_stats_evidence_to_real_sources():
 def test_game_digest_score_line_names_both_teams(demo_store, tmp_path):
     text = _digest_text("post_game", POST, demo_store, tmp_path)
     assert "Final score: Melbourne United 95 – 97 Adelaide 36ers" in text
+
+
+# ---------- found on the live site: a judge headline dropped the data boundary its claim carries ----------
+
+RECORD_CLAIM = ("Cole Anthony scored 30 points in 21:50. That is the fewest minutes for a 30-point game "
+                "since at least 2015-16 among box rows with minutes recorded.")
+
+
+@pytest.mark.parametrize("headline,expected", [
+    ("Anthony's 30 came in 21:50, fewest minutes for 30 on record",
+     "Anthony's 30 came in 21:50, fewest minutes for 30 on record (since at least 2015-16)"),
+    ("Fewest minutes for 30 since at least 2015-16", "Fewest minutes for 30 since at least 2015-16"),
+    ("Anthony scores 30 in 22 minutes", "Anthony scores 30 in 22 minutes"),
+])
+def test_record_headline_carries_the_claims_data_boundary(headline, expected):
+    from storydesk.site import headline_for
+
+    assert headline_for({"headline": headline, "claim": RECORD_CLAIM}) == expected
+
+
+def test_record_headline_without_a_bounded_claim_is_unchanged():
+    from storydesk.site import headline_for
+
+    finding = {"headline": "Melbourne's home record against Adelaide is strong", "claim": "Melbourne lead 9-4 at home."}
+    assert headline_for(finding) == "Melbourne's home record against Adelaide is strong"
+
+
+def test_committed_record_page_headline_states_the_data_boundary():
+    page = (REPO / "site" / "findings" / "25.html").read_text(encoding="utf-8")
+    h1 = re.search(r"<h1>(.*?)</h1>", page).group(1)
+    assert "since at least 2015-16" in h1, h1

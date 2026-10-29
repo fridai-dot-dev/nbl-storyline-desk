@@ -2,7 +2,7 @@
 
 **Scope:** everything since round 1 (`a58d645..HEAD`). The review covered site rendering and escaping, the runner's deadline and finalisation paths, public claims checked against `published/store.db` and the code, and leaks of private material.
 
-**Verdict:** needs attention, with 1 high, 3 medium and 1 low finding. All five were fixed. Claude wrote the failing checks in `tests/test_final_review_fixes.py`, Sol made them pass in one fix round ([prompt](codex-prompts/final-fix.md), [report](codex-reports/final-fix.md)), and Claude re-ran the full suite: 155 offline and 3 live checks pass.
+**Verdict:** needs attention, with 1 high, 3 medium and 1 low finding. All five were fixed. Claude wrote the failing checks in `tests/test_final_review_fixes.py`, Sol made them pass in one fix round ([prompt](codex-prompts/final-fix.md), [report](codex-reports/final-fix.md)), and Claude re-ran the full suite: 155 offline and 3 live checks pass (160 offline after the headline fix below).
 
 | Severity | Finding | Outcome |
 |---|---|---|
@@ -17,6 +17,8 @@
 A link check of the rebuilt site found something the review hadn't. Every stats source link was a URL the agents had guessed, such as `github.com/nblr/nblr_data/...` and `api.nbl.com.au/...`, and none of them resolved. The contract had asked for "the actual data source" without giving the URL.
 
 The site now links stats evidence to the real nblR release, chosen by the table named in the evidence. Play-by-play links to [data provenance](../data-provenance.md), because the NBL match API refuses browser requests. The contract now asks agents for the table name, not a URL. A check fails if any committed page carries a guessed URL.
+
+Checking the live site after the first publish found one more. A judge-written headline said "fewest minutes for 30 on record", while its claim said "since at least 2015-16". The boundary rule checked claims but not headlines. A headline with record words now carries its claim's boundary, so it reads "...on record (since at least 2015-16)".
 
 ## Parked
 

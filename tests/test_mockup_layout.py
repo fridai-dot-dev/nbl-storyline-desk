@@ -503,3 +503,12 @@ def test_cards_are_well_formed(demo_store, tmp_path):
     for page in out.rglob("*.html"):
         text = page.read_text(encoding="utf-8")
         assert text.count("<article") == text.count("</article>"), page.name
+
+
+def test_nothing_forces_a_phone_to_scroll_sideways(demo_store, tmp_path):
+    out = _build(demo_store, tmp_path)
+    index = _read(out, "index.html")
+    assert re.search(r'<div class="table-wrap">\s*<table class="runs-table"', index), "the runs table scrolls in its own box"
+    css = re.search(r"<style>(.*?)</style>", index, re.S).group(1)
+    assert re.search(r"\.table-wrap\s*\{[^}]*overflow-x:\s*auto", css)
+    assert re.search(r"\.pill\.held\s*\{[^}]*white-space:\s*normal", css), "long held badges wrap on a phone"

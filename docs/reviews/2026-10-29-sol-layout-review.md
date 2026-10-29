@@ -36,7 +36,9 @@ Each fix below has a failing check in the last section of `tests/test_mockup_lay
 - **Values on board charts:** they overlapped on the small charts. These charts now label only the highlighted value, as the mockup does.
 - **Email held rows:** they squeezed the headline, badge, sign-off note and buttons into one row, which overflowed the email. The headline now sits on its own line, with the rest on a line under it.
 - **Board card descriptions:** these could open with "User follow-up to finding 34." Meta lead-ins are skipped, and the same rule applies to headline fallbacks.
+- **Sideways scrolling on phones:** a probe of all 32 pages at 390px found the board's runs table and the email's longest held badge wider than the screen. The table now scrolls in its own box, and held badges wrap. The probe now finds no overflow.
 
 ## Parked
 
 - `directives.simulated` defaults to 1, so on a legacy store any existing directives would be marked simulated when the column is added. No published or real store has directives from any other source.
+- `check_chart` now accepts a label shortened with "…" when the label starts with the shortened text. Only the tests call it; no gate does, so agent charts aren't checked by the looser rule.

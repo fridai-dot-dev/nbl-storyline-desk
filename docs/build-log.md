@@ -61,6 +61,6 @@ Runs 3 and 4 stopped at the Pro session limit. They remain in the store and are 
 
 ## Checks and collaboration
 
-198 offline checks pass. The three live checks, D10, D11 and D13, pass against the published store.
+199 offline checks pass. The three live checks, D10, D11 and D13, pass against the published store.
 
 Bart chose the game, the follow-up question called the bench paradox, and the suggested-follow-up feature. His other recorded decisions were: NBL rather than Daniel's Donuts; four run types and follow-up research as a headline feature; a pitch led by cross-source links and collaboration; the build-versus-buy criteria; email for leadership and a board for producers; hidden queries; the accepted deepen answers and definition of a disappointing run; graphics as a future direction; no Claude API spend, with Claude Code as fallback; Apify where useful; and a public repository and site that show the work in full.

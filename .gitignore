@@ -21,4 +21,5 @@ data/raw/
 # Local run data (the published demo copies what it needs into site/)
 data/
 store/
-site/
+# The checked-in static snapshot is the published demo. Keep local archives and
+# generated spools out through the rules above.

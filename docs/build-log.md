@@ -1,0 +1,54 @@
+# Round-1 build log
+
+This is the observable history of the NBL Storyline Desk demo.
+
+## Process
+
+Decide: brainstorm, deepen pass, plausibility check and design. Then Prove: failing checks first. Then Build: Codex Terra. Then Review: Codex Sol adversarial review and one fix round. Then live runs. Each surprise became a failing check, then a fix.
+
+## Before the build
+
+The plausibility check found relevant prior art: Stats Perform's OptaAI Studio, Lega Basket Serie A's LUCA, and Genius Sports as the NBL's data partner. The pitch therefore leads with cross-source links and the collaboration layer.
+
+The technical sanity-check recorded 10 assumptions. It found divergences on MCP-tool inheritance in sub-agents, unreadable `pbp.rds`, and Pro plan limits. See [the findings](reviews/2026-10-28-sanity-check-findings.md). The builder check raised seven questions before implementation. See [the builder check](reviews/2026-10-28-builder-check.md).
+
+## Build and review
+
+The Prove suite was committed at `85af971` (2026-10-28 11:03 +07:00). Terra's round-1 build then passed 75 checks.
+
+Sol's adversarial review found 2 critical, 4 high and 2 medium issues. See [the review](reviews/2026-10-28-sol-review-round-1.md). The integrator added regression checks at `37086d2` (11:49). Sol's fix round followed, and the build and the fixes were committed together at `65106e0` (12:12), with 95 checks passing.
+
+## What live runs exposed
+
+Each item below became a failing check before it was fixed.
+
+1. Real data mixed numeric and UUID match IDs, and included duplicate box rows. `0b18212` (12:19:29).
+2. The first smoke run lost tool-call attribution rows to SQLite lock contention under parallel specialists. A specialist also used an unknown source type. `5923a75` (12:24:15), `af5e226` (12:39:24).
+3. The final whistle, 11:26:37 UTC, is not the stats sign-off, 11:35:07 UTC. The 30-minute cap runs from the whistle. `705dccc` (12:51:02), `b6965c3` (13:11:44).
+4. A pure-Python parse of a 370 MB R file crashed WSL. The lesson is to cap memory and never parse `pbp.rds`.
+5. The first pre-game run hit the Pro session limit. The lead had not been told its cutoff or run ID. “Recent form” was sorted by a column that is always `NA`. `da0886f` (14:45:46), `002533d` (15:00:11).
+6. The first post-game run ended while background specialists were still working because streaming reports a result before they finish. Search also returned the earliest matches and hid the fourth quarter. `1f63e0b` (15:06:30), `2c5b02e` (15:29:53).
+7. The first real site build needed headlines, held badges and run summaries. Smoke runs leaked onto the site, and follow-up requests were not recorded. `fa99072` (15:45:35), `01dce98` (16:10:20).
+8. A session-limit error was stored as a run summary, and failed runs reached the site. `f6fdb02` (19:44:43), `70584ab` (20:05:31).
+9. A record claim buried inside another finding was not rechecked. Now every finding has one checked number. `70584ab` (20:05:31).
+10. Bart proposed suggested follow-ups: rarity, on-pace, comparison and context. They run in the existing judge pass with no extra agent runs. `7c70eca` (20:23:55), `6435e89` (21:29:09).
+11. Polish added an exec summary, rendered editor notes, a deduplicated email, chart labels, and fixed a CSS class collision that faded text. `327ea52` (21:33:55), `bf9637b` (21:58:26).
+
+## The published run
+
+Cost is at API prices. The runs used Bart's Claude subscription and include judge passes.
+
+| Run | ID | Duration | Cost |
+| --- | ---: | ---: | ---: |
+| Pre-game | 2 | 151 s | US$1.83 |
+| Post-game | 5 | 180 s | US$3.11 |
+| Supplemental | 6 | 199 s | US$2.21 |
+| Follow-up | 7 | 195 s | US$1.96 |
+
+Runs 3 and 4 stopped at the Pro session limit. They remain in the store and are excluded from the site.
+
+## Checks and collaboration
+
+133 offline checks pass. The three live checks, D10, D11 and D13, pass against the published store.
+
+Bart chose the game, the follow-up question called the bench paradox, and the suggested-follow-up feature. His other recorded decisions were: NBL rather than Daniel's Donuts; four run types and follow-up research as a headline feature; a pitch led by cross-source links and collaboration; the build-versus-buy criteria; email for leadership and a board for producers; hidden queries; the accepted deepen answers and definition of a disappointing run; graphics as a future direction; no Claude API spend, with Claude Code as fallback; Apify where useful; and a public repository and site that show the work in full.

@@ -149,7 +149,7 @@ def prepare_run(
     ]
     if game["status"] == "complete":
         game_lines.extend([
-            f"Final score: {game['home_team']} {game['home_score']} – {game['away_score']} {game['away_score']}",
+            f"Final score: {game['home_team']} {game['home_score']} – {game['away_score']} {game['away_team']}",
             f"Quarter scores: {json.dumps(game['quarters'])}",
         ])
     _write(out, "game.md", "Game", "\n\n".join(game_lines))

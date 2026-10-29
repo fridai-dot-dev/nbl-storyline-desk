@@ -448,7 +448,7 @@ In the demo, the usage, novelty and fit numbers come from the simulated round, a
 
 ## 12. Sanity-check results (2026-10-28)
 
-Full table: vault `_meta/sanity-check/runs/2026-10-28-nbl-storyline-desk-agent-sdk-design/findings.md`. Everything below is already reflected in sections 4, 5 and 8.
+Full table: [sanity-check findings](../../reviews/2026-10-28-sanity-check-findings.md). Everything below is already reflected in sections 4, 5 and 8.
 
 | # | Assumption | Verdict | What changed |
 |---|---|---|---|

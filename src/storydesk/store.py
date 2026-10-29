@@ -237,6 +237,15 @@ class Store:
         with self._con() as con:
             return con.execute("SELECT 1 FROM signoffs WHERE finding_id = ? AND audience = ?", (finding_id, audience)).fetchone() is not None
 
+    def signoffs(self, finding_id: int) -> list[dict[str, Any]]:
+        """Return the recorded audience approvals in the order they were made."""
+        with self._con() as con:
+            rows = con.execute(
+                "SELECT audience, approver, created_at FROM signoffs WHERE finding_id = ? ORDER BY id",
+                (finding_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def add_feedback(self, finding_id: int, role: str, action: str, text: str | None = None, simulated: bool = True) -> None:
         with self._con() as con:
             con.execute("INSERT INTO feedback (finding_id, role, action, text, simulated, created_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -264,6 +273,24 @@ class Store:
 
     def add_request(self, anchor_finding_id: int, asked_by: str, question: str) -> int:
         with self._con() as con:
+            cur = con.execute(
+                "INSERT INTO requests (anchor_finding_id, asked_by, question, created_at) VALUES (?, ?, ?, ?)",
+                (anchor_finding_id, asked_by, question, _now()),
+            )
+            return int(cur.lastrowid)
+
+    def find_or_add_request(self, anchor_finding_id: int, asked_by: str, question: str) -> int:
+        """Reuse the matching pending request when a follow-up is retried."""
+        question = question.strip()
+        with self._con() as con:
+            row = con.execute(
+                "SELECT id FROM requests "
+                "WHERE anchor_finding_id = ? AND question = ? AND answered_run_id IS NULL "
+                "ORDER BY id LIMIT 1",
+                (anchor_finding_id, question),
+            ).fetchone()
+            if row is not None:
+                return int(row["id"])
             cur = con.execute(
                 "INSERT INTO requests (anchor_finding_id, asked_by, question, created_at) VALUES (?, ?, ?, ?)",
                 (anchor_finding_id, asked_by, question, _now()),

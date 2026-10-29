@@ -1,8 +1,7 @@
 # Private working files: never publish
 *.pdf
 JD.md
-initial-prompt.md
-polished-prompt.md
+*-prompt.md
 response.md
 
 # Tooling
@@ -23,3 +22,5 @@ data/
 store/
 # The checked-in static snapshot is the published demo. Keep local archives and
 # generated spools out through the rules above.
+*.db-shm
+*.db-wal

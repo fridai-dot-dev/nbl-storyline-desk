@@ -29,6 +29,9 @@ from .tool_log import tool_log_path
 from .tools import ToolContext, get_game, search_media, search_transcripts
 
 
+INTERRUPT_GRACE_S = 2.0
+
+
 def ingest_tool_log(store: Store, run_id: int) -> int:
     """Copy this run's SDK-hook spool into SQLite exactly once per event."""
     path = tool_log_path(store.path, run_id)
@@ -70,7 +73,8 @@ async def enforce_deadline(awaitable: Awaitable[Any], seconds: float, interrupt:
     try:
         return "complete", await asyncio.wait_for(task, timeout=seconds)
     except asyncio.TimeoutError:
-        await interrupt()
+        with contextlib.suppress(asyncio.TimeoutError, Exception):
+            await asyncio.wait_for(interrupt(), timeout=INTERRUPT_GRACE_S)
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
@@ -113,7 +117,8 @@ async def _query_with_deadline(client: Any, prompt: str, seconds: float) -> tupl
     try:
         return "complete", await asyncio.wait_for(query_and_receive(), timeout=max(0.001, seconds))
     except asyncio.TimeoutError:
-        await client.interrupt()
+        with contextlib.suppress(asyncio.TimeoutError, Exception):
+            await asyncio.wait_for(client.interrupt(), timeout=INTERRUPT_GRACE_S)
         drained = None
         with contextlib.suppress(asyncio.TimeoutError, asyncio.CancelledError, Exception):
             # Interrupt normally places the terminal result straight onto the stream.
@@ -213,7 +218,7 @@ async def run_live(
     store.init()
     run_id = store.start_run(run_type, game_id, as_of, route)
     request_id = (
-        store.add_request(anchor_finding_id, asked_by or "producer", question.strip())
+        store.find_or_add_request(anchor_finding_id, asked_by or "producer", question.strip())
         if run_type == "follow_up" and anchor_finding_id is not None and question is not None
         else None
     )
@@ -316,6 +321,6 @@ async def run_live(
             duration_s=time.monotonic() - started, model_usage=model_usage,
             num_agents=5, route=route,
         )
-        if request_id is not None:
+        if request_id is not None and status == "complete":
             store.answer_request(request_id, run_id)
     return run_id

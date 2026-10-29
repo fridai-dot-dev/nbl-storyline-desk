@@ -1,19 +1,28 @@
-# NBL Storyline Desk
+# NBL Storyline Desk, and a Daniel's Donuts Review Desk
 
-**An agent desk that turns each NBL game into checked, cross-source storylines for leadership and producers, inside 30 minutes of the final whistle.** It's built on the Claude Agent SDK and run on real NBL27 data: the Round 1 opener, Melbourne United 95–97 Adelaide 36ers.
+**NBL Storyline Desk.** The Storyline Desk catches what you'd only notice by watching every minute with the record books open: the trends, records and turning points in each game and its coverage. It sends checked storylines to LK's internal teams before and after every game, so leadership, media and producers can agree on what to celebrate.
 
-> **See it live:** the [leadership briefing email](https://fridai-dot-dev.github.io/nbl-storyline-desk/outbox/post-game-email.html) · a [record stat with its proof](https://fridai-dot-dev.github.io/nbl-storyline-desk/findings/25.html) · a [producer follow-up, answered](https://fridai-dot-dev.github.io/nbl-storyline-desk/findings/39.html) · [the producer board](https://fridai-dot-dev.github.io/nbl-storyline-desk/) · [how it was built](docs/build-log.md)
-> The same pages are in [`site/`](site/).
+**Daniel's Donuts Review Desk.** The Review Desk reads every customer review each week and links it to the sales, staffing, stock and promotion data, a link that usually takes several teams in a room. It tells store, region and network leaders what's changing and why it might be, early, with the evidence attached, and gives them one place to discuss it.
 
-## What it found on Round 1
+Both make analysis that normally needs a specialist, or several teams, available to everyone at once, and give leadership one place to agree on what to do with it.
 
-Each of these came from agents working across the stats, the broadcast, the press conferences and the live fan chat. Code then checked them before release.
+> This is a rapid build, about 1–1.5 days of full-time work, made to show Claude agent capability. The order of operations, timing, prompts and safety controls are informed guesses, not knowledge of LK's structure or priorities.
 
-- **Cole Anthony scored 30 in 21:50, the fewest minutes for a 30-point game in the box-score data since 2015-16,** among box rows with minutes recorded: 370 such games up to that night. The stats specialist found it after the game and wrote it as its own checked record. It was held because it touches his reported minutes limit, and the demo approver has signed it off for producers only.
-- **Melbourne's bench outscored Adelaide's by 30, and Melbourne still lost.** It was a producer's follow-up question. Since 2015-16, the weaker bench has won 18 of 74 games with a gap that size. Adelaide's starter-heavy load wasn't new: it was close to last season's share.
-- **A fan's "10-point referee gift" claim, tested against the play-by-play.** Melbourne scored 4 fourth-quarter free-throw points and Adelaide scored 5. The desk didn't amplify the claim, and it showed the same message had been posted twice in 81 seconds.
-- **Adelaide won from three, not on balance.** They made 13 threes to Melbourne's 7, an 18-point edge, while Melbourne won the two-point battle 58–38.
-- **Pre-game storylines set as tests, then resolved after the whistle.** Cotton's "Melbourne hold him to 21" benchmark was contradicted when he scored 29. Goulding's "easier looks" storyline was contradicted when he went 1 of 6.
+## Start here
+
+1. **[The night in your inbox](https://fridai-dot-dev.github.io/nbl-storyline-desk/).** These are the pre-game and post-game emails as LK's internal teams would get them, from a real game: NBL27 Round 1, Melbourne United 95–97 Adelaide 36ers.
+2. **[Run it yourself, safely](docs/before-you-run.md).** This covers what the agents can and can't touch, the spend caps, and how to check the code before you give it your Claude account. The commands are [below](#run-it).
+3. **[What's rough and what I assumed](docs/whats-rough.md).** It's honest about the gaps, with the [assumptions](docs/assumptions.md) behind them.
+
+**Daniel's Donuts:** the [plan](docs/daniels-donuts/prd.md) and a [sample weekly email](https://fridai-dot-dev.github.io/nbl-storyline-desk/daniels-donuts/weekly.html) (illustrative data). The [code](src/reviewdesk/) builds the real Claude Agent SDK configuration and is checked offline. I'm happy to use this to walk you through how I build, in an interview or a working session.
+
+## What the NBL desk found on Round 1
+
+- **Cole Anthony scored 30 in 21:50,** the fewest minutes for a 30-point game in the box-score data since 2015-16. It's tagged sensitive because it touches his reported minutes limit.
+- **Melbourne's bench outscored Adelaide's by 30, and Melbourne still lost.** This was a producer's follow-up. Since 2015-16, the weaker bench has won 18 of 74 games with a gap that size.
+- **A fan's "10-point referee gift" claim, tested:** fourth-quarter free throws were 4 points to Melbourne and 5 to Adelaide.
+- **Adelaide won from three:** 13 threes to 7, an 18-point edge, while Melbourne won the two-point battle 58–38.
+- **Pre-game storylines were set as tests, then resolved.** Cotton's "Melbourne hold him to 21" was contradicted when he scored 29, and Goulding's "easier looks" when he went 1 of 6.
 
 ## How it works
 
@@ -23,25 +32,15 @@ flowchart LR
   P --> L[Lead agent · Opus]
   L --> S1[Stats] & S2[Commentary] & S3[Media] & S4[Fans]
   S1 & S2 & S3 & S4 --> M[MCP tool server<br/>cutoff-safe SQL and search]
-  M --> F[(Findings store<br/>evidence · trail · ledger)]
-  F --> G[Gates in code<br/>recheck · data boundary · sensitive hold]
+  M --> F[(Findings store<br/>evidence · trail)]
+  F --> G[Gates in code<br/>recheck · data boundary · stances]
   G --> J[Judge pass<br/>scores · headlines · follow-ups]
-  J --> W[Email · board · finding pages]
+  J --> W[Inbox emails · board · finding pages]
 ```
 
-- **Code sets the rails and agents explore.** Code decides when a run happens, what it starts with, and what may leave the system. Agents decide where to look and how far to go, and branch when a finding is worth following.
-- **Every run is frozen at its cutoff.** Tools can't see anything after it, which the tests prove, so a replayed game behaves as it would have live.
-- **One lead with four specialists.** Opus leads and four Sonnet specialists work in parallel, with spend, depth and time capped. Our code enforces the 25-minute post-game deadline.
-- **Findings carry their evidence and their trail.** Every finding stores its sources (URL plus row or timestamp) and its parent, so you can follow a lead from a commentator's call to the play-by-play and into the record books.
-
-## Why the output can be trusted
-
-- **Numbers are rechecked by code.** Every checked number stores the SQL that produced it, and code re-runs it before release. Wrong numbers are dropped. Quoted numbers stay inside the quote with their source.
-- **Records state where the data starts:** "since at least 2015-16".
-- **Sensitive items are held until a named person signs off,** separately for each audience. That covers injury, officiating, conflict, legal and fan quotes.
-- **Agents don't grade their own work.** Code scores how new each finding is against coverage published before the cutoff. A separate judge pass scores who it's for and how it ties to a directive or an editorial need.
-
-## Speed and cost (measured)
+- **Code sets the rails, and agents explore.** Each run is frozen at its cutoff, so a replayed game behaves as it would live. The agents get only the desk's own query tools: no web, no shell, no file writes.
+- **Numbers are rechecked by code before release.** Records state where the data starts ("since at least 2015-16"). Email copy may only restate stored findings, and code checks that.
+- **Everyone internal gets the same email at once.** Anyone can set a stance on any story: push it, use it if it comes up, or steer away. Sensitive stories (injury, officiating, fan quotes) aren't suggested for any comms until someone does. A steer-away blocks a story until it's withdrawn or overridden by the League GM or an LK director.
 
 | Run | Time | Cost at API prices |
 |---|---|---|
@@ -50,44 +49,31 @@ flowchart LR
 | Supplemental (after the press conferences) | 3.3 min | US$1.77 |
 | Producer follow-up | 3.3 min | US$1.54 |
 
-The runs used a Claude subscription, and each cost includes the run's judge pass. That comes to about US$8 per game, or about US$1,360 for a 165-game regular season. The [cost](docs/cost.md) doc has the assumptions and the levers.
-
-## How it was built
-
-Decide, prove, build, review, then run on real data early:
-1. **Decide.** The design came from a plausibility check and a technical sanity-check.
-2. **Prove.** The failing checks were written before any code.
-3. **Build and review.** Codex built against those checks in small rounds, and a second model reviewed each round adversarially.
-4. **Live runs.** These exposed problems the offline tests couldn't, such as specialists being abandoned mid-run and search hiding the fourth quarter. Each one became a failing check, then a fix.
-
-There are 199 offline checks and 3 live checks, and all pass. The [build log](docs/build-log.md) has the timeline, and the [review trail](docs/reviews/README.md) has every review and prompt.
+That's about US$8 a game. [Cost](docs/cost.md) has the assumptions. [What each report could see](docs/data-provenance.md), and when, is in the data provenance.
 
 ## Docs
 
-- **For leadership:** [proposal](docs/gm-proposal.md) · [build vs buy](docs/build-vs-buy.md) · [cost](docs/cost.md)
-- **For stakeholders:** [PRD](docs/prd.md) · [assumptions](docs/assumptions.md) · [data provenance](docs/data-provenance.md)
-- **For engineers:** [architecture](docs/architecture.md) · [team pitch](docs/team-pitch.md) · [design](docs/superpowers/specs/2026-10-28-nbl-storyline-desk-design.md)
-- **The same engine for another LK business:** [Daniel's Donuts outline](docs/daniels-donuts-outline.md)
+| Doc | For | When |
+|---|---|---|
+| [Proposal](docs/gm-proposal.md) · [Build vs buy](docs/build-vs-buy.md) · [Cost](docs/cost.md) | Leadership | Deciding on a pilot |
+| [Before you run](docs/before-you-run.md) · [What's rough](docs/whats-rough.md) · [Assumptions](docs/assumptions.md) | Anyone running or judging it | Before running it |
+| [PRD](docs/prd.md) · [Data provenance](docs/data-provenance.md) · [Verification](docs/verification.md) | Stakeholders | Checking what it does and where the data comes from |
+| [Architecture](docs/architecture.md) · [Team pitch](docs/team-pitch.md) · [Design](docs/superpowers/specs/2026-10-29-gm-handover-design.md) | Engineers | Reviewing the build |
+| [Build log](docs/build-log.md) · [Review trail](docs/reviews/README.md) | Engineers | Seeing how it was built and reviewed |
+| [Daniel's Donuts plan](docs/daniels-donuts/prd.md) | Leadership, engineers | The same approach for another LK business |
 
 ## Run it
 
+Read [before you run](docs/before-you-run.md) first.
+
 ```bash
 uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
+.venv/bin/python -m pytest -q                       # offline checks: no model calls, no network
 PYTHONPATH=src .venv/bin/python -m storydesk fetch && PYTHONPATH=src .venv/bin/python -m storydesk build-db
-.venv/bin/python -m pytest -q                       # offline checks, no model calls
 PYTHONPATH=src .venv/bin/python -m storydesk run post_game --game 36dbeb55-58ad-11f1-a69b-43a6b5595d3e --live
 PYTHONPATH=src .venv/bin/python -m storydesk site   # builds site/ from the store
 ```
 
-Live runs need a Claude login or an `ANTHROPIC_API_KEY`. Building the run corpus (captions, chat, articles) is described in [data provenance](docs/data-provenance.md).
+Live runs need a Claude login or an `ANTHROPIC_API_KEY`. Building the commentary, chat and article corpus for another game is still a manual step ([data provenance](docs/data-provenance.md)).
 
-## Honest limits
-
-- **One game.** This is a demo on one game, using public stand-ins for LK's own feeds: Genius stats, broadcast audio and social data.
-- **The board's reactions and directives are simulated.** A small round from generic personas was added after the runs to show the collaboration loop. It didn't steer any run, and every item is labelled "simulated" ([details](published/README.md)).
-- **Auto-captions** can mishear names. Any number taken from commentary is quoted or rechecked.
-- **Agents guessed source URLs.** On these runs, every source link for a statistic was a plausible URL that didn't resolve. Code now links stats evidence to the real data release, and agents name only the table and rows.
-- **Human acceptance checks are still to do:** a blind fan rating, a backtest against published coverage, and a cold read test. The headline facts were checked by hand against ESPN's independent box score ([verification](docs/verification.md)).
-- **Not production-hardened:** there's no auth, scheduling or live feeds yet. The [team pitch](docs/team-pitch.md) lists what comes next.
-
-Built by Bart Lind with Claude Code (Opus) orchestrating and Codex building and reviewing.
+Built by Bart Lind, with Claude Code orchestrating and Codex building and reviewing.

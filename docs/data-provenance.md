@@ -17,6 +17,27 @@ The demo game is NBL27 Round 1: **Melbourne United 95–97 Adelaide 36ers**, Sat
 | Adelaide press conference published | 12:23:56 | 10:23 pm | YouTube upload time |
 | Melbourne press conference published | 12:44:33 | 10:44 pm | YouTube upload time |
 
+## What each report could see
+
+Each run is frozen at its cutoff, and every item is stamped with when it became available, not when it happened. This table shows what lands in time for each report on a real game night. The press-conference and article timings are estimates: on this game, Adelaide's press conference was published 57 minutes after the whistle and Melbourne's 78 minutes after.
+
+| Source | Lands | Post-game (≤30 min) | Supplemental | Next pre-game |
+|---|---|---|---|---|
+| Live stats feed | live | ✓ | ✓ | ✓ |
+| Broadcast commentary | live, *if LK transcribes it* | ✓ | ✓ | ✓ |
+| YouTube live chat | live | ✓ | ✓ | ✓ |
+| Press conferences | ~20–60 min after | ✗ | ✓ | ✓ |
+| Post-game articles | 30 min to next morning | ✗ | some | ✓ |
+| Highlights and press-conference video comments | hours after | ✗ | ✗ | ✓ |
+| Comments on LK's own social posts | live, *production only* | ✓ | ✓ | ✓ |
+
+### Social sources
+
+- **Demo:** the only fan source is the YouTube live chat. It has 2,274 messages, many in Tagalog, with plenty of betting talk, so it isn't a clean read of fan opinion. Video comments on each team's recent games would feed the next pre-game brief, but this demo doesn't collect them yet.
+- **Reddit:** self-serve API keys ended in November 2025, so apps now need Reddit's approval. Third-party reports say new requests close on 31 October 2026.
+- **X:** reading posts is pay-per-use, at about US$0.005 per post. It isn't built.
+- **Production:** fan signal would come from LK's own accounts through the platforms' APIs, plus a social listening tool.
+
 ## Sources
 
 ### Statistics: results, team and player box scores, play-by-play

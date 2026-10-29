@@ -339,3 +339,84 @@ def test_published_snapshot_carries_the_labelled_simulated_round():
     index = (REPO / "site" / "index.html").read_text(encoding="utf-8")
     left, _, _ = _columns(index)
     assert "simulated" in left.lower() and "No directives yet" not in left
+
+
+# ---------- fix round: Sol's review and Claude's visual check against the mockups ----------
+
+def test_run_metadata_is_escaped_on_every_page(demo_store, tmp_path):
+    store = demo_store.store
+    run = store.get_run(demo_store.post_run)
+    store.finish_run(run["id"], status="complete", cost_usd=run["cost_usd"], duration_s=run["duration_s"],
+                     model_usage=run["model_usage"], num_agents="<script>alert(1)</script>", route=run["route"])
+    out = _build(demo_store, tmp_path)
+    for page in out.rglob("*.html"):
+        assert "<script>alert(1)</script>" not in page.read_text(encoding="utf-8"), page.name
+
+
+def test_invalid_simulated_round_creates_and_changes_nothing(demo_store, tmp_path):
+    from storydesk.cli import main
+
+    def refused(store_path, item):
+        bad = tmp_path / "bad.json"
+        bad.write_text(json.dumps({"feedback": [item], "directives": []}), encoding="utf-8")
+        with pytest.raises((SystemExit, ValueError, KeyError)):
+            if main(["simulate", "--store", str(store_path), "--file", str(bad)]) != 0:
+                raise SystemExit(1)
+
+    fresh = tmp_path / "fresh.db"
+    refused(fresh, {"finding_id": 1, "role": "League CEO", "action": "launch it", "text": None})
+    refused(fresh, {"finding_id": 1, "role": "League CEO", "action": "back", "text": None})
+    assert not fresh.exists()                                          # validation never creates a store
+    before = demo_store.store.path.read_bytes()
+    refused(demo_store.store.path, {"finding_id": 99999, "role": "League CEO", "action": "back", "text": None})
+    assert demo_store.store.path.read_bytes() == before
+
+
+@pytest.mark.parametrize("kind", ["bar", "line"])
+def test_extreme_labels_never_invert_the_plot(kind):
+    import xml.etree.ElementTree as ET
+
+    from storydesk.charts import check_chart, render_bar_chart, render_line_chart
+
+    render = render_bar_chart if kind == "bar" else render_line_chart
+    labels = [f"{'Very long generated category name '* 2}{i}" for i in range(6)]   # about 70 characters each
+    svg = render("Extreme labels", labels, [5, 7, 6, 9, 8, 4], 3, "Value")
+    root = ET.fromstring(svg)
+    height, baseline = float(root.get("height")), float(root.get("data-baseline"))
+    assert baseline - 38 >= 100, "the plot keeps at least 100px of height"
+    for node in root.iter():
+        tag = node.tag.split("}")[-1]
+        if tag == "rect" and node.get("data-label") is not None:
+            assert float(node.get("height")) >= 0
+        if tag == "circle":
+            assert 0 <= float(node.get("cy")) <= baseline + 0.01
+        if tag == "text" and node.get("data-axis-label") == "x":
+            reach = len(node.text) * 6.5 * 0.7071
+            assert float(node.get("y")) + reach <= height and float(node.get("x")) - reach >= 0, node.text
+    assert check_chart(svg, "Extreme labels") == []                    # every category is still named
+
+
+def test_board_cards_stay_short_like_the_mockup(demo_store, tmp_path):
+    store = demo_store.store
+    store.update_finding(demo_store.f_checked, claim=(
+        "Adelaide scored 26 points in the third quarter. Their best quarter came after half-time. Bench minutes rose."))
+    store.add_signoff(demo_store.f_held, approver="Head of social", audience="producers")
+    index = _read(_build(demo_store, tmp_path), "index.html")
+    card = _angle_cards(index)[demo_store.f_checked]["body"]
+    text = html.unescape(card)
+    assert "Adelaide scored 26 points in the third quarter." in text
+    assert "Bench minutes rose." not in text                           # the full claim is on the finding page
+    assert "box_team:Adelaide 36ers" not in text                       # evidence is summarised, not listed by ref
+    assert re.search(r"\b1 stats check\b", text)
+    width = re.search(r'<svg[^>]*\bwidth="([\d.]+)"', card)
+    assert width and float(width.group(1)) <= 360, "the card chart is drawn at card size, so its text is legible"
+    assert "backed by CEO" in text                                     # the simulated back reaction, as a lead pill
+    left, _, _ = _columns(index)
+    assert left.count("Head of social") == 1 and "2 held items" in left   # sign-offs grouped by approver
+
+
+def test_email_has_no_repeated_lead_in_and_counts_angles_in_words(demo_store, tmp_path):
+    email = _email(demo_store, tmp_path)
+    happened = email.split("What happened", 1)[1].split("<h2", 1)[0]
+    assert "<strong>What happened.</strong>" not in happened
+    assert not re.search(r"\b1 angles\b", email)

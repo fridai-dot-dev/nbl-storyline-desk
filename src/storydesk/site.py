@@ -203,8 +203,18 @@ def _first_sentence(value: Any) -> str:
     return pieces[0] if pieces else ""
 
 
+_BOUNDARY_PHRASE = re.compile(r"since at least \d{4}-\d{2}", re.I)
+
+
 def _copy_headline(finding: dict[str, Any]) -> str:
-    return str(finding.get("plain_headline") or headline_for(finding)).strip()
+    headline = str(finding.get("plain_headline") or headline_for(finding)).strip()
+    # Record headlines keep their data boundary even when the copy pass rewrote them.
+    source = " ".join(str(finding.get(key) or "") for key in ("headline", "claim"))
+    boundary = _BOUNDARY_PHRASE.search(source)
+    if boundary and not _BOUNDARY_PHRASE.search(headline):
+        stem, mark = (headline[:-1], headline[-1]) if headline[-1:] in "?." else (headline, "")
+        headline = f"{stem} ({boundary.group(0)}){mark}"
+    return headline
 
 
 def _copy_premise(finding: dict[str, Any]) -> str:

@@ -1,0 +1,10 @@
+{
+  "approvals": [
+    {"id": "appr-0001", "tool": "post_review_reply", "story_id": "dd-03", "stance": "push",
+     "approved_by": "Area manager, western Melbourne", "at": "2026-10-26T09:12:00+11:00"},
+    {"id": "appr-0002", "tool": "draft_promo", "story_id": "dd-04", "stance": "use_if_raised",
+     "approved_by": "Marketing", "at": "2026-10-26T10:05:00+11:00"},
+    {"id": "appr-0003", "tool": "draft_promo", "story_id": "dd-02", "stance": "steer_away",
+     "approved_by": "Operations", "at": "2026-10-26T10:20:00+11:00"}
+  ]
+}

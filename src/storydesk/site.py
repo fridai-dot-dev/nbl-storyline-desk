@@ -102,6 +102,14 @@ _META_SENTENCE = re.compile(
 )
 _PRIMARY_RUN_TYPES = ("pre_game", "post_game", "supplemental")
 _PUBLISHED_FINDING_STATUSES = {"shipped", "held"}
+_HELD_AUDIENCES = ("producers", "partners")
+_RUN_LABELS = {
+    "pre_game": "Pre-game",
+    "post_game": "Post-game",
+    "supplemental": "Supplemental",
+    "follow_up": "Follow-up",
+}
+_REPO_URL = "https://github.com/fridai-dot-dev/nbl-storyline-desk"
 
 
 def _published_content(store: Store, game_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -163,10 +171,26 @@ def headline_for(finding: dict[str, Any]) -> str:
     return " ".join(words[:25])
 
 
+def _signoffs_html(finding: dict[str, Any]) -> str:
+    signoffs = finding.get("signoffs") or []
+    lines = [
+        f'<div class="muted">Signed off for {escape(str(item["audience"]))} by {escape(str(item["approver"]), quote=False)}</div>'
+        for item in signoffs
+        if isinstance(item, dict) and item.get("audience") and item.get("approver")
+    ]
+    return "".join(lines)
+
+
 def _status_badge(finding: dict[str, Any]) -> str:
     if finding["status"] == "held":
         category = finding.get("sensitivity") or "sensitive"
-        return f'<span class="pill held">Held · {escape(category)} · needs sign-off</span>'
+        signed_audiences = {
+            str(item["audience"]) for item in finding.get("signoffs") or []
+            if isinstance(item, dict) and item.get("audience")
+        }
+        waiting = [audience for audience in _HELD_AUDIENCES if audience not in signed_audiences]
+        suffix = f" for {', '.join(waiting)}" if waiting else ""
+        return f'<span class="pill held">Held · {escape(category)} · needs sign-off{escape(suffix)}</span>'
     return f'<span class="pill">{escape(finding["status"])}</span>'
 
 
@@ -184,10 +208,12 @@ def _cost_label(run: dict[str, Any]) -> str:
 def _rejudge_cost(run: dict[str, Any]) -> float:
     """Return later judge reruns kept in the cumulative run ledger."""
     usage = run.get("model_usage")
-    if not isinstance(usage, dict) or not isinstance(usage.get("rejudge"), list):
+    if not isinstance(usage, dict):
         return 0.0
+    rejudge = usage.get("rejudge")
+    passes = rejudge if isinstance(rejudge, list) else [rejudge]
     cost = 0.0
-    for pass_usage in usage["rejudge"]:
+    for pass_usage in passes:
         if not isinstance(pass_usage, dict):
             continue
         for model_usage in pass_usage.values():
@@ -238,7 +264,7 @@ def _finding_card(finding: dict[str, Any], href: str) -> str:
     tags = " ".join(f"<span class=\"pill\">{escape(tag)}</span>" for tag in finding["audience"])
     return (
         f"<article class=\"card\"><a href=\"{href}\"><strong>{escape(headline_for(finding), quote=False)}</strong></a><br>"
-        f"{_status_badge(finding)}{tags}"
+        f"{_status_badge(finding)}{tags}{_signoffs_html(finding)}"
         "<div class=\"buttons\"><button>Back it</button><button>Comment</button><button>Make it a directive</button><button>Drop</button></div></article>"
     )
 
@@ -360,9 +386,10 @@ def _finding_page(
     suggested_html = _followups_html(finding, run["game_id"])
     return (
         f"<p><a href=\"../index.html\">Storyline Desk</a> · Finding {finding['id']}</p><h1>{escape(headline_for(finding), quote=False)}</h1>"
-        f"<p>{escape(finding['claim'], quote=False)}</p><p>{_status_badge(finding)}"
+        f"<p class=\"muted\">Run cost: {_cost_label(run)}</p><p>{escape(finding['claim'], quote=False)}</p><p>{_status_badge(finding)}"
         + " ".join(f"<span class=\"pill\">{escape(tag)}</span>" for tag in finding["audience"]) + "</p>"
-        f"<section class=\"card\">{chart or '<p class=\"muted\">No chart was released for this finding.</p>'}{query_html}</section>"
+        + _signoffs_html(finding)
+        + f"<section class=\"card\">{chart or '<p class=\"muted\">No chart was released for this finding.</p>'}{query_html}</section>"
         f"<h2>How the agents got here</h2>{trail_html}<h2>Evidence</h2>{evidence_html}"
         f"<h2>Suggested follow-ups</h2>{suggested_html}<h2>Follow-up requests</h2>{requests_html}"
     )
@@ -372,6 +399,8 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     runs, findings = _published_content(store, game_id)
+    for finding in findings:
+        finding["signoffs"] = store.signoffs(finding["id"])
     published_run_ids = {run["id"] for run in runs}
     pages = {item["id"] for item in findings}
     findings_dir = out / "findings"
@@ -454,14 +483,81 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
         )
     output.append(_write(out / "outbox" / "post-game-email.html", "Post-game leadership briefing", email))
 
-    links = "".join(f"<li><a href=\"findings/{finding['id']}.html\">{escape(headline_for(finding), quote=False)}</a></li>" for finding in findings)
+    run_order = {name: position for position, name in enumerate(_RUN_LABELS)}
+    ordered_runs = sorted(runs, key=lambda run: (run_order.get(run["run_type"], len(run_order)), run["id"]))
+    findings_by_run = {run["id"]: [] for run in ordered_runs}
+    for finding in findings:
+        findings_by_run.setdefault(finding["run_id"], []).append(finding)
+
+    def is_signed_or_shipped(finding: dict[str, Any]) -> bool:
+        return finding["status"] == "shipped" or bool(finding.get("signoffs"))
+
+    checked = [
+        finding for finding in findings
+        if finding["kind"] == "checked" and is_signed_or_shipped(finding)
+    ]
+    checked.sort(key=lambda finding: (-_judge_score(finding), finding["id"]))
+    strongest = checked[0] if checked else None
+    follow_up = next((run for run in ordered_runs if run["run_type"] == "follow_up"), None)
+    follow_up_finding = next(
+        (finding for finding in findings_by_run.get(follow_up["id"], []) if finding["kind"] != "nothing_found"), None,
+    ) if follow_up else None
+    start_here = [
+        '<li><a href="outbox/post-game-email.html">Read the post-game leadership email</a></li>',
+    ]
+    if strongest:
+        start_here.append(
+            f'<li><a href="findings/{strongest["id"]}.html">Inspect the strongest checked record: '
+            f'{escape(headline_for(strongest), quote=False)}</a></li>'
+        )
+    if follow_up_finding:
+        start_here.append(
+            f'<li><a href="findings/{follow_up_finding["id"]}.html">See the follow-up answer: '
+            f'{escape(headline_for(follow_up_finding), quote=False)}</a></li>'
+        )
+
+    run_summaries = []
+    grouped_findings = []
+    nothing_found = []
+    for run in ordered_runs:
+        run_findings = findings_by_run.get(run["id"], [])
+        label = _RUN_LABELS.get(run["run_type"], run["run_type"].replace("_", " ").title())
+        duration = float(run.get("duration_s") or 0)
+        minutes, seconds = divmod(int(round(duration)), 60)
+        duration_label = f"{minutes}m {seconds:02d}s"
+        run_summaries.append(
+            f'<article class="card"><strong>{escape(label)}</strong><br><span class="muted">'
+            f'Cutoff: {escape(str(run["as_of"]))} · Duration: {duration_label} · '
+            f'Run cost: {_cost_label(run)} · {len(run_findings)} findings</span></article>'
+        )
+        substantive = [finding for finding in run_findings if finding["kind"] != "nothing_found"]
+        if substantive:
+            grouped_findings.append(
+                f'<section><h3>{escape(label)}</h3>'
+                + "".join(_finding_card(finding, f"findings/{finding['id']}.html") for finding in substantive)
+                + "</section>"
+            )
+        nothing_found.extend(finding for finding in run_findings if finding["kind"] == "nothing_found")
+
+    docs = {
+        "repository": _REPO_URL,
+        "README": f"{_REPO_URL}/blob/main/README.md",
+        "build log": f"{_REPO_URL}/blob/main/docs/build-log.md",
+        "architecture": f"{_REPO_URL}/blob/main/docs/architecture.md",
+        "verification": f"{_REPO_URL}/blob/main/docs/verification.md",
+    }
+    how_built = " · ".join(
+        f'<a href="{url}">{label}</a>' for label, url in docs.items()
+    )
     index = (
-        "<h1>NBL Storyline Desk</h1><p>An agent-powered, cutoff-safe research layer for NBL media.</p>"
-        "<p><a href=\"pre-game.html\">Pre-game briefing</a> · <a href=\"outbox/post-game-email.html\">Post-game leadership email</a></p>"
-        "<h2>How it works</h2><p>Specialists research across stats, commentary, media and fans; code rechecks numbers, holds sensitive material and records usage.</p>"
-        "<h2>Findings</h2><ul>" + links + "</ul><h2>Cost per run</h2><ul>" + "".join(
-            f"<li>{escape(run['run_type'])}: {_cost_label(run)}</li>" for run in runs
-        ) + "</ul>"
+        "<h1>NBL Storyline Desk</h1>"
+        "<p>A cutoff-safe desk that turns an NBL game into checked storylines for leadership and producers.</p>"
+        "<h2>Start here</h2><ul>" + "".join(start_here) + "</ul>"
+        "<h2>Runs</h2>" + "".join(run_summaries)
+        + "<h2>Findings</h2>" + ("".join(grouped_findings) or "<p class=\"muted\">No released findings yet.</p>")
+        + "<details><summary>Searched, nothing found</summary>"
+        + ("".join(_finding_card(finding, f"findings/{finding['id']}.html") for finding in nothing_found) or "<p class=\"muted\">No empty searches were recorded.</p>")
+        + "</details><h2>How this was built</h2><p>" + how_built + "</p>"
     )
     output.append(_write(out / "index.html", "NBL Storyline Desk", index))
     return output

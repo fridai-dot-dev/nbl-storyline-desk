@@ -237,6 +237,15 @@ class Store:
         with self._con() as con:
             return con.execute("SELECT 1 FROM signoffs WHERE finding_id = ? AND audience = ?", (finding_id, audience)).fetchone() is not None
 
+    def signoffs(self, finding_id: int) -> list[dict[str, Any]]:
+        """Return the recorded audience approvals in the order they were made."""
+        with self._con() as con:
+            rows = con.execute(
+                "SELECT audience, approver, created_at FROM signoffs WHERE finding_id = ? ORDER BY id",
+                (finding_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def add_feedback(self, finding_id: int, role: str, action: str, text: str | None = None, simulated: bool = True) -> None:
         with self._con() as con:
             con.execute("INSERT INTO feedback (finding_id, role, action, text, simulated, created_at) VALUES (?, ?, ?, ?, ?, ?)",

@@ -84,7 +84,7 @@ def test_pages_lead_with_headline_and_keep_the_full_claim(site):
     h1 = re.search(r"<h1[^>]*>(.*?)</h1>", page, re.S).group(1)
     assert "Adelaide's 26-point third quarter" in h1
     assert ns.store.get_finding(ns.f_checked)["claim"] in page
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
+    email = (out / "index.html").read_text(encoding="utf-8")
     assert "Adelaide's 26-point third quarter" in email
 
 
@@ -92,8 +92,8 @@ def test_pages_lead_with_headline_and_keep_the_full_claim(site):
 
 def test_email_marks_held_items_with_their_category(site):
     _, out = site
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
-    assert re.search(r"held[^<]{0,60}officiating", email, re.I), "held officiating item needs a visible badge"
+    email = (out / "index.html").read_text(encoding="utf-8")
+    assert re.search(r"sensitive[^<]{0,60}officiating", email, re.I), "a sensitive officiating item needs a visible tag"
 
 
 def test_run_summary_feeds_what_happened(store):
@@ -112,8 +112,9 @@ def test_email_shows_summary_and_labels_cost(demo_store, tmp_path):
     demo_store.store.set_run_summary(demo_store.post_run, "Adelaide edged Melbourne in a game of five lead changes.")
     out = tmp_path / "site"
     build_site(demo_store.store, demo_store.stats_db, out, game_id=OPENER)
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
-    assert "Adelaide edged Melbourne in a game of five lead changes." in email
+    email = (out / "index.html").read_text(encoding="utf-8")
+    board = (out / "board.html").read_text(encoding="utf-8")       # the run summary (editor's notes) now lives on the board
+    assert "Adelaide edged Melbourne in a game of five lead changes." in board
     assert re.search(r"API prices", email)
 
 

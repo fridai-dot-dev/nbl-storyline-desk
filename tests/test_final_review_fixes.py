@@ -129,6 +129,8 @@ def _unsafe_hrefs(page_html):
     for raw in re.findall(r'href="([^"]*)"', page_html):
         value = re.sub(r"[\x00-\x20]", "", html.unescape(raw)).lower()  # browsers drop these before parsing
         scheme = _SCHEME.match(value)
+        if scheme and scheme.group(1) == "mailto" and re.match(r"^mailto:(storyline|review)-desk@example\.com(\?|$)", value):
+            continue  # the designed stance links (design 4B); every other mailto or scheme stays flagged
         if scheme and scheme.group(1) not in {"http", "https"}:
             bad.append(raw)
         elif not scheme and not re.match(r"^(\.\./|[\w./-]+\.html|#|[\w-]+/)", value):

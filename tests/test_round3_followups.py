@@ -78,7 +78,7 @@ def test_finding_page_and_email_show_suggested_followups(demo_store, tmp_path):
     assert f"How rare is finding {demo_store.f_checked} league-wide since 2015-16?" in page
     assert re.search(r"storydesk run follow_up[^<]*--anchor\s+%d" % demo_store.f_checked, page)
     assert re.search(r"projection", page, re.I)                    # on_pace suggestions are labelled as projections
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
+    email = (out / "index.html").read_text(encoding="utf-8")
     assert "Suggested follow-ups" in email
     assert len(re.findall(r'class="[^"]*suggested-followup', email)) <= 3
 

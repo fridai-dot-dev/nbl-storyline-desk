@@ -374,7 +374,8 @@ def test_board_cards_stay_short_like_the_mockup(demo_store, tmp_path):
     assert "Adelaide scored 26 points in the third quarter." in text
     assert "Bench minutes rose." not in text                           # the full claim is on the finding page
     assert "box_team:Adelaide 36ers" not in text
-    assert "<svg" not in card
+    width = re.search(r'<svg[^>]*\bwidth="([\d.]+)"', card)              # a compact chart, as before R1 (restored by Claude)
+    assert width and float(width.group(1)) <= 360
 
 
 def test_email_has_no_repeated_lead_in_and_counts_angles_in_words(demo_store, tmp_path):
@@ -442,7 +443,7 @@ def test_card_descriptions_skip_meta_lead_ins(demo_store, tmp_path):
     store = demo_store.store
     store.update_finding(demo_store.f_child, claim=(
         "User follow-up to finding 2. Adelaide's 26-point third quarter was its best of the game. It came off the bench."))
-    index = _read(_build(demo_store, tmp_path), "index.html")
+    index = _read(_build(demo_store, tmp_path), "board.html")
     text = html.unescape(_angle_cards(index)[demo_store.f_child]["body"])
     assert "User follow-up to finding" not in text
     assert "Adelaide's 26-point third quarter was its best of the game." in text
@@ -450,14 +451,14 @@ def test_card_descriptions_skip_meta_lead_ins(demo_store, tmp_path):
 
 def test_email_held_rows_put_the_headline_on_its_own_line(demo_store, tmp_path):
     email = _email(demo_store, tmp_path)
-    held = email.split("Held for sign-off", 1)[1].split("<h2", 1)[0]
-    rows = re.findall(r'<div class="held-row[^"]*">(.*?)(?=<div class="held-row|$)', held, re.S)
+    sensitive = email.split("Sensitive stories: set a stance", 1)[1].split("Questions worth asking next", 1)[0]
+    rows = re.findall(r'<article class="item sensitive"[^>]*>(.*?)</article>', sensitive, re.S)
     assert rows
     for row in rows:
-        assert re.match(r'\s*<a href="\.\./findings/\d+\.html">', row), "the headline leads the row"
-        meta = row.find('class="held-meta')
-        assert meta > row.find("</a>") > 0, "badge, sign-off note and buttons sit on a line under the headline"
-        assert "Keep internal" in row[meta:]
+        assert re.match(r'\s*<b class="h">', row), "the headline leads the box"
+        stance = row.find('class="stance"')
+        assert stance > row.find("</b>") > 0, "the sensitive tag, premise and stance links sit under the headline"
+        assert "Steer away" in row[stance:]
 
 
 def test_cards_are_well_formed(demo_store, tmp_path):
@@ -471,6 +472,6 @@ def test_nothing_forces_a_phone_to_scroll_sideways(demo_store, tmp_path):
     out = _build(demo_store, tmp_path)
     index = _read(out, "index.html")
     assert re.search(r'<div class="table-wrap">\s*<table class="runs-table"', index), "the runs table scrolls in its own box"
-    css = re.search(r"<style>(.*?)</style>", index, re.S).group(1)
+    css = _read(out, "assets/agora.css")                               # the shared token stylesheet
     assert re.search(r"\.table-wrap\s*\{[^}]*overflow-x:\s*auto", css)
     assert re.search(r"\.pill\.held\s*\{[^}]*white-space:\s*normal", css), "long held badges wrap on a phone"

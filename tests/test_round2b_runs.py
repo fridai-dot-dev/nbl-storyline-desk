@@ -45,7 +45,7 @@ def test_site_shows_only_the_latest_complete_run_of_each_type(demo_store, tmp_pa
     newer = _post_run(demo_store, "Newer complete run: Adelaide scored 26 in Q3")
     build_site(demo_store.store, demo_store.stats_db, out, game_id=OPENER)
     assert (out / "findings" / f"{newer}.html").exists()
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
+    email = (out / "index.html").read_text(encoding="utf-8")
     assert "Newer complete run" in email
     assert not (out / "findings" / f"{demo_store.f_checked}.html").exists()  # superseded post-game run is off
     assert (out / "findings" / f"{demo_store.pre_finding}.html").exists()    # other run types unaffected
@@ -67,6 +67,6 @@ def test_supplemental_findings_appear_as_an_email_addendum(demo_store, tmp_path)
     record_result(demo_store.store, ctx.run_id, fake_result(0.5, 60), route="sdk", num_agents=3)
     out = tmp_path / "site"
     build_site(demo_store.store, demo_store.stats_db, out, game_id=OPENER)
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
+    email = (out / "emails" / "supplemental.html").read_text(encoding="utf-8")  # the addendum is its own email page
     assert "Addendum" in email and "Coach: the third quarter cost us" in email
     assert (out / "findings" / f"{fid}.html").exists()

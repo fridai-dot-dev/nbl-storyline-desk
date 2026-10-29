@@ -14,7 +14,7 @@ def _rebuild(ns, tmp_path):
 
     out = tmp_path / "site"
     build_site(ns.store, ns.stats_db, out, game_id=OPENER)
-    return out, (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
+    return out, (out / "index.html").read_text(encoding="utf-8")
 
 
 def test_judge_writes_an_exec_summary_for_the_run(demo_store):
@@ -33,23 +33,26 @@ def test_what_happened_is_short_and_editor_notes_render_as_markdown(demo_store, 
     store = demo_store.store
     store.set_run_summary(demo_store.post_run, "# Editorial summary\n\n**What happened.** Adelaide won.\n\n- First note\n- Second note")
     store.set_exec_summary(demo_store.post_run, "Adelaide won 97-95 at Melbourne on the back of an 18-point edge from three.")
-    _, email = _rebuild(demo_store, tmp_path)
+    out, inbox = _rebuild(demo_store, tmp_path)
+    email = (out / "board.html").read_text(encoding="utf-8")        # the run summary and editor's notes live on the board
     happened = email.split("What happened", 1)[1].split("<h2", 1)[0]
     assert "Adelaide won 97-95 at Melbourne" in happened
-    assert "# Editorial summary" not in email and "**What happened.**" not in email   # no raw markdown anywhere
+    assert "# Editorial summary" not in email + inbox and "**What happened.**" not in email + inbox   # no raw markdown anywhere
     assert re.search(r"<details[^>]*>.*Editor.?s notes.*<li>\s*First note\s*</li>", email, re.S | re.I)
     assert "<strong>What happened.</strong>" in email
 
 
 def test_each_finding_appears_once_in_the_email_and_held_items_are_grouped(demo_store, tmp_path):
-    _, email = _rebuild(demo_store, tmp_path)
-    sections = email.split("Suggested follow-ups", 1)[0]          # suggestions may point back at their finding
+    _, inbox = _rebuild(demo_store, tmp_path)
+    email = inbox.split('data-email-type="post_game"', 1)[1]      # the post-game email inside the inbox page
+    sections = email.split("Questions worth asking next", 1)[0]   # suggestions may point back at their finding
     body_links = re.findall(r'href="(?:\.\./)?findings/(\d+)\.html"', sections)
     assert len(body_links) == len(set(body_links)), "a finding is linked from more than one email section"
-    held = email.split("Held for sign-off", 1)
-    assert len(held) == 2, "held items need their own section"
-    angles = email.split("Angles for the next 48 hours", 1)[1].split("<h2", 1)[0]
-    assert "Held ·" not in angles                                  # angles are shipped items only
+    sensitive = email.split("Sensitive stories: set a stance", 1)
+    assert len(sensitive) == 2, "sensitive stories need their own section"
+    top_pick = email.split("The desk's top pick", 1)[1].split("<h4", 1)[0]
+    for sensitive_id in (demo_store.f_held, demo_store.f_fan):    # sensitive stories with no stance are never the top pick
+        assert f'data-finding="{sensitive_id}"' not in top_pick
 
 
 def test_two_bars_never_rotate_and_rotated_labels_are_not_clipped():
@@ -75,7 +78,7 @@ def test_two_bars_never_rotate_and_rotated_labels_are_not_clipped():
 
 def test_secondary_text_is_readable(demo_store, tmp_path):
     out, _ = _rebuild(demo_store, tmp_path)
-    css = (out / "findings" / f"{demo_store.f_checked}.html").read_text(encoding="utf-8")
+    css = (out / "assets" / "agora.css").read_text(encoding="utf-8")  # the shared token stylesheet
     greys = re.findall(r"--muted\s*:\s*#([0-9a-fA-F]{6})", css)
     assert greys, "pages define a --muted text colour"
 
@@ -93,7 +96,7 @@ def test_secondary_text_is_readable(demo_store, tmp_path):
 def test_text_classes_are_never_faded(demo_store, tmp_path):
     """The chart's faded-bar rule (.muted{opacity:.28}) collided with the text class .muted."""
     out, _ = _rebuild(demo_store, tmp_path)
-    for page in out.rglob("*.html"):
+    for page in [*out.rglob("*.html"), *out.rglob("*.css")]:        # page styles now live in the shared stylesheet
         css = page.read_text(encoding="utf-8")
         for rule in re.findall(r"([^{}]+)\{([^}]*)\}", css):
             selector, body = rule

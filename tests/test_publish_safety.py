@@ -56,7 +56,7 @@ def test_run_cost_separates_demo_rejudging(demo_store, tmp_path):
                                 route=run["route"])
     out = tmp_path / "site"
     build_site(demo_store.store, demo_store.stats_db, out, game_id=OPENER)
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
+    email = (out / "index.html").read_text(encoding="utf-8")
     assert f"US${run['cost_usd']:.2f}" in email              # the run's own cost, first
     assert re.search(r"re-?judg", email, re.I)               # demo re-judging is labelled, not folded in
 
@@ -66,6 +66,6 @@ def test_replay_timing_is_described_honestly(demo_store, tmp_path):
 
     out = tmp_path / "site"
     build_site(demo_store.store, demo_store.stats_db, out, game_id=OPENER)
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
+    email = (out / "index.html").read_text(encoding="utf-8")
     assert "after full time" not in email.lower()
     assert re.search(r"cutoff[^<]{0,80}(whistle|full time)", email, re.I)

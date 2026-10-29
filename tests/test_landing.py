@@ -16,13 +16,14 @@ def _build(ns, tmp_path):
 
 
 def test_signoffs_are_visible_where_the_item_appears(demo_store, tmp_path):
-    demo_store.store.add_signoff(demo_store.f_held, approver="Bart Lind (demo approver)", audience="producers")
+    # Stances replace per-audience sign-offs: the stance and its role show wherever the item appears.
+    demo_store.store.set_stance(demo_store.f_held, "Head of social", "use_if_raised", "Fine to use if asked.")
     out = _build(demo_store, tmp_path)
     page = (out / "findings" / f"{demo_store.f_held}.html").read_text(encoding="utf-8")
-    assert "Signed off for producers" in page and "Bart Lind (demo approver)" in page
-    assert not re.search(r"Held · officiating · needs sign-off(?! for partners)", page)  # remaining audience named
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
-    assert "Signed off for producers" in email
+    assert "Head of social: use if raised" in page and "Fine to use if asked." in page
+    assert not re.search(r"Held · officiating · needs sign-off(?! for partners)", page)
+    email = (out / "index.html").read_text(encoding="utf-8")
+    assert "Head of social: use if raised" in email
 
 
 def test_rejudge_cost_is_separated_for_either_usage_shape(demo_store, tmp_path):
@@ -42,8 +43,9 @@ def test_landing_page_is_a_guided_path(demo_store, tmp_path):
     index = (out / "index.html").read_text(encoding="utf-8")
     for label in ("Pre-game", "Post-game", "Follow-up"):
         assert label in index, label
-    assert "pre_game" not in index and "post_game" not in index        # human labels, not run-type keys
-    assert 'href="outbox/post-game-email.html"' in index
+    visible = re.sub(r"<[^>]+>", " ", index)                            # the inbox keeps run types in data attributes
+    assert "pre_game" not in visible and "post_game" not in visible    # human labels, not run-type keys
+    assert 'href="#post-game"' in index
     nothing = [f for run in (demo_store.post_run,) for f in demo_store.store.findings(run) if f["kind"] == "nothing_found"]
     for f in nothing:                                                   # searches with no result aren't headline findings
         assert f'findings/{f["id"]}.html' not in index.split("Searched, nothing found")[0]

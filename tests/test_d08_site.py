@@ -26,7 +26,7 @@ def _links(path):
 
 def test_core_pages_exist(site):
     ns, out = site
-    for rel in ("index.html", "pre-game.html", "outbox/post-game-email.html"):
+    for rel in ("index.html", "board.html"):  # the inbox holds the pre-game and post-game emails; the board moved
         assert (out / rel).exists(), rel
     for fid in (ns.f_checked, ns.f_attr, ns.f_held, ns.f_fan, ns.f_child, ns.pre_finding):
         assert (out / "findings" / f"{fid}.html").exists(), fid
@@ -64,9 +64,9 @@ def test_trail_links_child_to_anchor(site):
 def test_held_items_show_as_held_and_handles_never_appear(site):
     ns, out = site
     held_page = (out / "findings" / f"{ns.f_held}.html").read_text(encoding="utf-8").lower()
-    assert "held" in held_page
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
-    assert "held" in email.lower()
+    assert "sensitive · officiating" in held_page
+    email = (out / "index.html").read_text(encoding="utf-8")
+    assert "sensitive · officiating" in email.lower()
     for page in _html_files(out):
         text = page.read_text(encoding="utf-8")
         assert "test_handle" not in text, page
@@ -76,7 +76,7 @@ def test_held_items_show_as_held_and_handles_never_appear(site):
 
 def test_email_reports_speed_cost_and_labels_simulated_feedback(site):
     ns, out = site
-    email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
+    email = (out / "index.html").read_text(encoding="utf-8")
     assert re.search(r"cutoff[^<]{0,80}(whistle|full time)", email, re.I)  # replays never claim live timing
     assert "$" in email
     assert ns.store.get_finding(ns.f_checked)["claim"] in email
@@ -85,7 +85,7 @@ def test_email_reports_speed_cost_and_labels_simulated_feedback(site):
 
 def test_pre_game_page_lists_pre_game_findings(site):
     ns, out = site
-    page = (out / "pre-game.html").read_text(encoding="utf-8")
+    page = (out / "index.html").read_text(encoding="utf-8")
     assert ns.store.get_finding(ns.pre_finding)["claim"] in page
 
 

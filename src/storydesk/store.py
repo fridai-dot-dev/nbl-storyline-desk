@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,6 +49,8 @@ class Store:
                     number REAL, query TEXT, chart TEXT, status TEXT NOT NULL DEFAULT 'pending',
                     sensitivity TEXT, audience TEXT NOT NULL DEFAULT '[]', prompted_by TEXT,
                     drop_reason TEXT, novelty REAL, audience_fit REAL, direction REAL, headline TEXT,
+                    plain_headline TEXT, premise TEXT,
+                    metric TEXT, threshold REAL, test_direction TEXT, actual REAL, outcome TEXT,
                     followups TEXT NOT NULL DEFAULT '[]',
                     created_at TEXT NOT NULL
                 );
@@ -64,6 +67,13 @@ class Store:
                 CREATE TABLE IF NOT EXISTS signoffs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, finding_id INTEGER NOT NULL REFERENCES findings(id),
                     approver TEXT NOT NULL, audience TEXT NOT NULL, created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS stances (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    finding_id INTEGER NOT NULL REFERENCES findings(id), role TEXT NOT NULL,
+                    stance TEXT NOT NULL, comment TEXT, created_at TEXT NOT NULL,
+                    simulated INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(finding_id, role)
                 );
                 CREATE TABLE IF NOT EXISTS requests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, anchor_finding_id INTEGER NOT NULL REFERENCES findings(id),
@@ -89,8 +99,17 @@ class Store:
             self._add_column_if_missing(con, "runs", "summary", "TEXT")
             self._add_column_if_missing(con, "runs", "exec_summary", "TEXT")
             self._add_column_if_missing(con, "findings", "headline", "TEXT")
+            self._add_column_if_missing(con, "findings", "plain_headline", "TEXT")
+            self._add_column_if_missing(con, "findings", "premise", "TEXT")
+            self._add_column_if_missing(con, "findings", "metric", "TEXT")
+            self._add_column_if_missing(con, "findings", "threshold", "REAL")
+            self._add_column_if_missing(con, "findings", "test_direction", "TEXT")
+            self._add_column_if_missing(con, "findings", "actual", "REAL")
+            self._add_column_if_missing(con, "findings", "outcome", "TEXT")
             self._add_column_if_missing(con, "findings", "followups", "TEXT NOT NULL DEFAULT '[]'")
             self._add_column_if_missing(con, "directives", "simulated", "INTEGER NOT NULL DEFAULT 1")
+            self._add_column_if_missing(con, "directives", "finding_id", "INTEGER")
+            self._add_column_if_missing(con, "directives", "stance_role", "TEXT")
 
     @staticmethod
     def _add_column_if_missing(con: sqlite3.Connection, table: str, name: str, definition: str) -> None:
@@ -144,22 +163,58 @@ class Store:
             )
 
     def add_finding(self, **fields: Any) -> int:
+        fields = dict(fields)
+        headline, premise = fields.get("plain_headline"), fields.get("premise")
+        if isinstance(headline, str) and isinstance(premise, str):
+            source = " ".join([str(fields.get("claim") or ""), *(
+                f"{item.get('ref') or ''} {item.get('quote') or ''}" for item in fields.get("evidence") or []
+                if isinstance(item, dict)
+            )])
+            grammar = {"Can", "Will", "Did", "What", "How", "Should", "The", "That", "It", "Commentary", "Fans"}
+            tokens = lambda text: set(re.findall(r"(?<![\w])\d+(?:[.,]\d+)*(?![\w])", text)) | {
+                word for word in re.findall(r"\b[A-Z][A-Za-z'’.-]+\b", text) if word not in grammar
+            }
+            if not tokens(f"{headline} {premise}") <= tokens(source):
+                # Fixtures and callers may supply draft copy directly. Do not
+                # let a draft with unsupported names or numbers enter the
+                # ledger as publishable copy; the copy pass can replace it.
+                fields["plain_headline"] = str(fields.get("claim") or "")
+                fields["premise"] = str(fields.get("claim") or "")
         names = [
             "run_id", "parent_id", "agent", "source_type", "claim", "kind", "number", "query", "chart",
-            "sensitivity", "audience", "prompted_by", "headline", "created_at",
+            "sensitivity", "audience", "prompted_by", "headline", "plain_headline", "premise", "metric",
+            "threshold", "test_direction", "actual", "outcome", "created_at",
         ]
+        test_direction = fields.get("test_direction")
+        if test_direction is None and fields.get("direction") in {"at_most", "at_least", "above", "below", "higher", "lower"}:
+            test_direction = fields.get("direction")
         values = [
             fields.get("run_id"), fields.get("parent_id"), fields["agent"], fields["source_type"],
             fields["claim"], fields["kind"], fields.get("number"), fields.get("query"),
             _json(fields["chart"]) if fields.get("chart") is not None else None,
             fields.get("sensitivity"), _json(list(fields.get("audience") or [])), fields.get("prompted_by"),
-            fields.get("headline"), _now(),
+            fields.get("headline"), fields.get("plain_headline"), fields.get("premise"), fields.get("metric"),
+            fields.get("threshold"), test_direction, fields.get("actual"), fields.get("outcome"), _now(),
         ]
         with self._con() as con:
             cur = con.execute(
                 f"INSERT INTO findings ({', '.join(names)}) VALUES ({', '.join('?' for _ in names)})", values
             )
-            return int(cur.lastrowid)
+            finding_id = int(cur.lastrowid)
+            # A whole-number result above a threshold is part of the stored
+            # test definition (for example, "above 25" starts at 26). Keep
+            # that interpretation in the finding's evidence so copy can cite
+            # it rather than inventing a number.
+            if test_direction == "above" and fields.get("threshold") is not None:
+                try:
+                    first_above = float(fields["threshold"]) + 1
+                    con.execute(
+                        "INSERT INTO evidence (finding_id, source_type, url, ref, quote, stance) VALUES (?, ?, ?, ?, NULL, NULL)",
+                        (finding_id, "structured_test", "", f"First whole number above {float(fields['threshold']):g}: {first_above:g}"),
+                    )
+                except (TypeError, ValueError):
+                    pass
+            return finding_id
 
     @staticmethod
     def _finding(row: sqlite3.Row) -> dict[str, Any]:
@@ -245,6 +300,50 @@ class Store:
                 "SELECT audience, approver, created_at FROM signoffs WHERE finding_id = ? ORDER BY id",
                 (finding_id,),
             ).fetchall()
+        return [dict(row) for row in rows]
+
+    def set_stance(
+        self, finding_id: int, role: str, stance: str, comment: str | None = None, *, at: str | None = None,
+        simulated: bool = False,
+    ) -> None:
+        """Set one role's current editorial stance and retain the current record."""
+        if stance not in {"push", "use_if_raised", "steer_away"}:
+            raise ValueError("stance must be push, use_if_raised or steer_away")
+        if not isinstance(role, str) or not role.strip():
+            raise ValueError("stance role is required")
+        timestamp = at or _now()
+        with self._con() as con:
+            if con.execute("SELECT 1 FROM findings WHERE id = ?", (finding_id,)).fetchone() is None:
+                raise KeyError(f"finding {finding_id} does not exist")
+            con.execute(
+                """INSERT INTO stances (finding_id, role, stance, comment, created_at, simulated)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(finding_id, role) DO UPDATE SET stance = excluded.stance,
+                       comment = excluded.comment, created_at = excluded.created_at, simulated = excluded.simulated""",
+                (finding_id, role.strip(), stance, comment, timestamp, int(simulated)),
+            )
+            con.execute(
+                "UPDATE directives SET status = 'cleared' WHERE finding_id = ? AND stance_role = ? AND status = 'active'",
+                (finding_id, role.strip()),
+            )
+            if stance == "steer_away":
+                text = str(comment or f"Steer away from finding {finding_id}.").strip()
+                con.execute(
+                    """INSERT INTO directives (owner_role, text, mandatory, expires, status, simulated, created_at, finding_id, stance_role)
+                       VALUES (?, ?, 1, NULL, 'active', ?, ?, ?, ?)""",
+                    (role.strip(), text, int(simulated), timestamp, finding_id, role.strip()),
+                )
+
+    def stances(self, finding_id: int) -> list[dict[str, Any]]:
+        try:
+            with self._con() as con:
+                rows = con.execute(
+                    "SELECT role, stance, comment, created_at AS time, simulated FROM stances WHERE finding_id = ? ORDER BY id",
+                    (finding_id,),
+                ).fetchall()
+        except sqlite3.OperationalError:
+            # Read-only historical ledgers pre-date the stance migration.
+            return []
         return [dict(row) for row in rows]
 
     def add_feedback(self, finding_id: int, role: str, action: str, text: str | None = None, simulated: bool = True) -> None:

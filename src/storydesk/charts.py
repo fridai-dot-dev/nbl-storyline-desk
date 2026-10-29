@@ -171,6 +171,84 @@ def render_line_chart(
     )
 
 
+def render_paired_bar_chart(
+    title: str,
+    team_names: tuple[str, str] | list[str],
+    measures: tuple[str, ...] | list[str],
+    values: tuple[tuple[float, float], ...] | list[tuple[float, float]],
+    *,
+    width: int = 680,
+    height: int = 340,
+) -> str:
+    """Render exactly two series for a team comparison, never a derived margin."""
+    teams, labels, pairs = list(team_names), list(measures), [tuple(pair) for pair in values]
+    if len(teams) != 2 or not labels or len(labels) != len(pairs) or any(len(pair) != 2 for pair in pairs):
+        raise ValueError("paired bars require two teams and one two-value pair per measure")
+    numeric = [float(value) for pair in pairs for value in pair]
+    maximum = max(max(numeric), 1.0)
+    left, right, top, bottom = 158, 46, 34, 30
+    plot_width = width - left - right
+    group_height = max(30, (height - top - bottom) / len(labels))
+    bars, text = [], []
+    for index, (measure, pair) in enumerate(zip(labels, pairs)):
+        y = top + index * group_height
+        text.append(_text(8, y + 15, str(measure), anchor="start"))
+        for team_index, (team, value) in enumerate(zip(teams, pair)):
+            value = float(value)
+            bar_y = y + 20 + team_index * 13
+            bar_width = plot_width * value / maximum
+            fill = "#1f3a5f" if team_index == 0 else "#8a8a8a"
+            bars.append(
+                f'<rect x="{left}" y="{bar_y:.2f}" width="{bar_width:.2f}" height="10" fill="{fill}" '
+                f'data-team="{escape(str(team))}" data-measure="{escape(str(measure))}" data-value="{value:g}"/>'
+            )
+            text.append(_text(left + bar_width + 5, bar_y + 9, f"{value:g}", anchor="start"))
+    legend = (
+        f'<text x="{left}" y="{height - 7}" text-anchor="start">{escape(str(teams[0]))}</text>'
+        f'<text x="{left + max(120, len(teams[0]) * 8)}" y="{height - 7}" text-anchor="start">{escape(str(teams[1]))}</text>'
+    )
+    return (
+        f'<svg xmlns="{SVG_NS}" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" '
+        f'aria-label="{escape(title)}"><title>{escape(title)}</title><style>'
+        'text{font:12px Inter,system-ui,sans-serif;fill:#1a1a1a}'
+        '</style>' + "".join(bars) + "".join(text) + legend + "</svg>"
+    )
+
+
+def render_test_result_chart(
+    title: str,
+    metric: str,
+    threshold: float,
+    direction: str,
+    actual: float,
+    outcome: str,
+    *,
+    width: int = 680,
+    height: int = 150,
+) -> str:
+    """Show a checked result as a dot against a clearly labelled test line."""
+    threshold, actual = float(threshold), float(actual)
+    low, high = min(0.0, threshold, actual), max(1.0, threshold, actual)
+    padding = max((high - low) * 0.12, 1.0)
+    low, high = low - padding, high + padding
+    left, right, y = 36, 36, 70
+    scale = lambda value: left + (float(value) - low) / (high - low) * (width - left - right)
+    line_x, actual_x = scale(threshold), scale(actual)
+    colour = "#3d7a4a" if outcome == "confirmed" else "#a04545"
+    return (
+        f'<svg xmlns="{SVG_NS}" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" '
+        f'aria-label="{escape(title)}"><title>{escape(title)}</title><style>'
+        'text{font:12px Inter,system-ui,sans-serif;fill:#1a1a1a}.axis{stroke:#cfcfcf;stroke-width:2}'
+        '</style>'
+        f'<text x="{left}" y="24" text-anchor="start">{escape(metric)}</text>'
+        f'<line class="axis" x1="{left}" y1="{y}" x2="{width-right}" y2="{y}"/>'
+        f'<line class="test-line" x1="{line_x:.2f}" y1="44" x2="{line_x:.2f}" y2="96" stroke="#000" stroke-width="2"/>'
+        f'<text x="{line_x + 5:.2f}" y="112" text-anchor="start">test line: {threshold:g}</text>'
+        f'<circle cx="{actual_x:.2f}" cy="{y}" r="7" fill="{colour}" data-actual="{actual:g}"/>'
+        f'<text x="{actual_x:.2f}" y="{y - 13}" text-anchor="middle">{actual:g}</text></svg>'
+    )
+
+
 def check_chart(svg: str, expected_title: str) -> list[str]:
     problems: list[str] = []
     try:

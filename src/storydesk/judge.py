@@ -13,6 +13,7 @@ from .store import Store
 
 
 FOLLOWUP_TYPES = frozenset({"rarity", "on_pace", "comparison", "context"})
+COPY_FIELDS = ("plain_headline", "premise", "metric", "threshold", "test_direction", "actual", "outcome")
 
 
 def _judge_exec_summary(value: Any) -> str | None:
@@ -168,3 +169,34 @@ def rejudge(
         model_usage=model_usage,
     )
     return output
+
+
+def copy_pass(store: Store, run_id: int, copier: Callable[[list[dict[str, Any]]], Any]) -> list[dict[str, Any]]:
+    """Persist editorial copy without changing a judge decision or run ledger.
+
+    The caller supplies a deliberately narrow copier seam so fixture runs stay
+    deterministic and the live command can use the same isolated judge setup.
+    ``direction`` is accepted from the copy contract and stored separately from
+    the judge's numeric ``findings.direction`` score.
+    """
+    findings = store.findings(run_id, include_dropped=True)
+    response = copier(findings)
+    if inspect.isawaitable(response):
+        response = asyncio.run(response)
+    if not isinstance(response, dict):
+        raise ValueError("copy pass must return a mapping of finding IDs to copy")
+    changed: list[dict[str, Any]] = []
+    for finding in findings:
+        raw = response.get(finding["id"], response.get(str(finding["id"])))
+        if not isinstance(raw, dict):
+            continue
+        fields = {name: raw[name] for name in COPY_FIELDS if name in raw}
+        if "direction" in raw and "test_direction" not in fields:
+            fields["test_direction"] = raw["direction"]
+        for required in ("plain_headline", "premise"):
+            if required not in fields or not isinstance(fields[required], str) or not fields[required].strip():
+                raise ValueError(f"copy for finding {finding['id']} needs {required}")
+        if fields:
+            store.update_finding(finding["id"], **fields)
+            changed.append(store.get_finding(finding["id"]))
+    return changed

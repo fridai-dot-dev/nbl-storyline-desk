@@ -22,7 +22,7 @@ from claude_agent_sdk import (
 
 from .agents import RUN_TYPES, build_options, build_prompt
 from .gates import apply_gates, coverage
-from .judge import rejudge, score_findings
+from .judge import copy_pass, rejudge, score_findings
 from .prepare import prepare_run
 from .store import Store
 from .tool_log import tool_log_path
@@ -178,6 +178,38 @@ async def _default_judge_scorer(
         float(getattr(result, "total_cost_usd", 0.0) or 0.0),
         getattr(result, "model_usage", None) or {},
     )
+
+
+async def _default_copy_copier(findings: list[dict[str, Any]]) -> dict[Any, Any]:
+    """Make the explicit, isolated editorial-copy call used by ``copy-pass``.
+
+    This deliberately mirrors the judge's no-tools, one-turn, one-dollar setup.
+    It does not write a run ledger: a copy pass is only allowed to alter the
+    dedicated copy and structured-test columns.
+    """
+    copy_prompt = (Path(__file__).resolve().parents[2] / "prompts" / "copy-pass.md").read_text(encoding="utf-8")
+    options = ClaudeAgentOptions(
+        model="claude-opus-5-5", system_prompt=copy_prompt, tools=[], allowed_tools=[],
+        disallowed_tools=["WebSearch", "WebFetch", "Bash", "Write", "Edit", "Agent"],
+        permission_mode="dontAsk", setting_sources=[], max_turns=1, max_budget_usd=1.0,
+    )
+    result = None
+    async with ClaudeSDKClient(options=options) as client:
+        try:
+            await client.query(json.dumps({"findings": findings}, default=str))
+            result = await _receive_result(client)
+        except asyncio.CancelledError:
+            await client.interrupt()
+            raise
+    return _parse_judge_result(getattr(result, "result", None))
+
+
+async def copy_pass_live(store: Store, run_id: int) -> list[dict[str, Any]]:
+    """Fill copy fields for a completed run after an explicit live opt-in."""
+    findings = store.findings(run_id, include_dropped=True)
+    payload = [{**finding, "evidence": store.evidence(finding["id"])} for finding in findings]
+    copied = await _default_copy_copier(payload)
+    return copy_pass(store, run_id, lambda _findings: copied)
 
 
 async def rejudge_live(store: Store, run_id: int, *, stats_db: str | Path, corpus_dir: str | Path) -> list[dict[str, Any]]:

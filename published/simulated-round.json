@@ -1,16 +1,16 @@
 {
-  "feedback": [
-    {"finding_id": 25, "role": "League CEO", "action": "back", "text": "Lead the call with this once the minutes limit is confirmed."},
-    {"finding_id": 39, "role": "Head of marketing", "action": "comment", "text": "Rare and good for Adelaide. Can social cut it as a graphic for Monday?"},
-    {"finding_id": 29, "role": "League GM", "action": "comment", "text": "Good that the numbers answer the gift claim. Producers only for now."},
-    {"finding_id": 34, "role": "Board director", "action": "back", "text": "The bench gap is the story I'd want explained on NBL Now."},
-    {"finding_id": 35, "role": "League CEO", "action": "drop", "text": "Too close to blaming one player in round one."},
-    {"finding_id": 39, "role": "NBL Now producer", "action": "using it", "text": null},
-    {"finding_id": 22, "role": "NBL Now producer", "action": "using it", "text": null},
-    {"finding_id": 30, "role": "Social lead", "action": "using it", "text": null},
-    {"finding_id": 33, "role": "Social lead", "action": "not for us", "text": null},
-    {"finding_id": 31, "role": "Broadcast producer", "action": "already had it", "text": null},
-    {"finding_id": 25, "role": "Broadcast producer", "action": "using it", "text": null}
+  "stances": [
+    {"finding_id": 25, "role": "League CEO", "stance": "push", "comment": "Lead the call with this once the minutes limit is confirmed.", "simulated": true},
+    {"finding_id": 39, "role": "Head of marketing", "stance": "use_if_raised", "comment": "Rare and good for Adelaide. Can social cut it as a graphic for Monday?", "simulated": true},
+    {"finding_id": 29, "role": "League GM", "stance": "use_if_raised", "comment": "Good that the numbers answer the gift claim. Producers only for now.", "simulated": true},
+    {"finding_id": 34, "role": "Board director", "stance": "push", "comment": "The bench gap is the story I'd want explained on NBL Now.", "simulated": true},
+    {"finding_id": 35, "role": "League CEO", "stance": "steer_away", "comment": "Too close to blaming one player in round one.", "simulated": true},
+    {"finding_id": 39, "role": "NBL Now producer", "stance": "push", "comment": null, "simulated": true},
+    {"finding_id": 22, "role": "NBL Now producer", "stance": "push", "comment": null, "simulated": true},
+    {"finding_id": 30, "role": "Social lead", "stance": "push", "comment": null, "simulated": true},
+    {"finding_id": 33, "role": "Social lead", "stance": "steer_away", "comment": null, "simulated": true},
+    {"finding_id": 31, "role": "Broadcast producer", "stance": "use_if_raised", "comment": null, "simulated": true},
+    {"finding_id": 25, "role": "Broadcast producer", "stance": "push", "comment": null, "simulated": true}
   ],
   "directives": [
     {"owner_role": "Head of marketing", "text": "Build the Cole Anthony arrival story through Round 3", "mandatory": false, "expires": "2026-10-05"},

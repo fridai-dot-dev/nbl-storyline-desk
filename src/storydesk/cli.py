@@ -12,14 +12,14 @@ from pathlib import Path
 
 from .data import build_stats_db, raw_connection
 from .judge import rejudge
-from .runner import run_live
+from .runner import copy_pass_live, run_live
 from .scorecard import scorecard
 from .site import build_site
 from .store import Store
 
 
 OPENER = "36dbeb55-58ad-11f1-a69b-43a6b5595d3e"
-_SIMULATED_ACTIONS = {"back", "comment", "drop", "using it", "already had it", "not for us", "ask a follow-up"}
+_SIMULATED_STANCES = {"push", "use_if_raised", "steer_away"}
 
 
 def _fetch(args: argparse.Namespace) -> int:
@@ -116,6 +116,16 @@ def _rejudge(args: argparse.Namespace) -> int:
     return 0
 
 
+def _copy_pass(args: argparse.Namespace) -> int:
+    if not args.live:
+        raise SystemExit("Refusing to run the copy pass without --live")
+    store = Store(args.store)
+    store.init()
+    asyncio.run(copy_pass_live(store, args.run_id))
+    print(args.run_id)
+    return 0
+
+
 def _site(args: argparse.Namespace) -> int:
     paths = build_site(Store(args.store), args.stats_db, args.out_dir, game_id=args.game)
     for path in paths:
@@ -131,23 +141,30 @@ def _simulate(args: argparse.Namespace) -> int:
         raise ValueError(f"could not read simulated round: {exc}") from exc
     if not isinstance(payload, dict):
         raise ValueError("simulated round must be a JSON object")
-    feedback, directives = payload.get("feedback"), payload.get("directives")
-    if not isinstance(feedback, list) or not isinstance(directives, list):
-        raise ValueError("simulated round needs feedback and directives lists")
+    stances, directives = payload.get("stances"), payload.get("directives")
+    if not isinstance(stances, list) or not isinstance(directives, list):
+        raise ValueError("simulated round needs stances and directives lists")
 
-    checked_feedback: list[tuple[int, str, str, str | None]] = []
+    checked_stances: list[tuple[int, str, str, str | None]] = []
     checked_directives: list[tuple[str, str, bool, str | None]] = []
-    for item in feedback:
+    seen_stances: set[tuple[int, str]] = set()
+    for item in stances:
         if not isinstance(item, dict):
-            raise ValueError("each feedback item must be an object")
-        finding_id, role, action, text = item.get("finding_id"), item.get("role"), item.get("action"), item.get("text")
+            raise ValueError("each stance item must be an object")
+        finding_id, role, stance, comment = item.get("finding_id"), item.get("role"), item.get("stance"), item.get("comment")
         if not isinstance(finding_id, int) or isinstance(finding_id, bool):
-            raise ValueError("feedback finding_id must be an integer")
-        if not isinstance(role, str) or not role.strip() or action not in _SIMULATED_ACTIONS:
-            raise ValueError("feedback needs a role and an allowed action")
-        if text is not None and not isinstance(text, str):
-            raise ValueError("feedback text must be a string or null")
-        checked_feedback.append((finding_id, role, action, text))
+            raise ValueError("stance finding_id must be an integer")
+        if not isinstance(role, str) or not role.strip() or stance not in _SIMULATED_STANCES:
+            raise ValueError("stance needs a role and an allowed stance")
+        if comment is not None and not isinstance(comment, str):
+            raise ValueError("stance comment must be a string or null")
+        if item.get("simulated") is not True:
+            raise ValueError("simulated stances must be labelled simulated")
+        key = (finding_id, role.strip())
+        if key in seen_stances:
+            raise ValueError("simulated round has more than one stance for a role and finding")
+        seen_stances.add(key)
+        checked_stances.append((finding_id, role.strip(), stance, comment))
     for item in directives:
         if not isinstance(item, dict):
             raise ValueError("each directive item must be an object")
@@ -163,7 +180,7 @@ def _simulate(args: argparse.Namespace) -> int:
     store_path = Path(args.store)
     if not store_path.is_file():
         raise ValueError(f"store does not exist: {store_path}")
-    target_ids = {finding_id for finding_id, _role, _action, _text in checked_feedback}
+    target_ids = {finding_id for finding_id, _role, _stance, _comment in checked_stances}
     try:
         read_only = sqlite3.connect(f"{store_path.resolve().as_uri()}?mode=ro", uri=True)
         try:
@@ -189,12 +206,15 @@ def _simulate(args: argparse.Namespace) -> int:
     store = Store(store_path)
     store.init()
     with store._con() as con:
+        # Remove the retired simulated feedback at the same time so the old
+        # reaction model cannot appear beside the new, labelled stances.
         con.execute("DELETE FROM feedback WHERE simulated = 1")
+        con.execute("DELETE FROM stances WHERE simulated = 1")
         con.execute("DELETE FROM directives WHERE simulated = 1")
         con.executemany(
-            "INSERT INTO feedback (finding_id, role, action, text, simulated, created_at) VALUES (?, ?, ?, ?, 1, ?)",
-            [(finding_id, role, action, text, datetime.now(timezone.utc).replace(microsecond=0).isoformat())
-             for finding_id, role, action, text in checked_feedback],
+            "INSERT INTO stances (finding_id, role, stance, comment, simulated, created_at) VALUES (?, ?, ?, ?, 1, ?)",
+            [(finding_id, role, stance, comment, datetime.now(timezone.utc).replace(microsecond=0).isoformat())
+             for finding_id, role, stance, comment in checked_stances],
         )
         con.executemany(
             "INSERT INTO directives (owner_role, text, mandatory, expires, simulated, created_at) VALUES (?, ?, ?, ?, 1, ?)",
@@ -241,6 +261,11 @@ def main(argv: list[str] | None = None) -> int:
     rejudge.add_argument("--store", default="store/demo.db")
     rejudge.add_argument("--corpus", default="data/corpus")
     rejudge.set_defaults(func=_rejudge)
+    copy = subs.add_parser("copy-pass")
+    copy.add_argument("--run-id", required=True, type=int)
+    copy.add_argument("--live", action="store_true")
+    copy.add_argument("--store", default="store/demo.db")
+    copy.set_defaults(func=_copy_pass)
     site = subs.add_parser("site")
     site.add_argument("--store", default="store/demo.db")
     site.add_argument("--stats-db", default="data/stats.duckdb")

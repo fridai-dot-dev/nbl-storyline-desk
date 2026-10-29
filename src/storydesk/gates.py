@@ -14,6 +14,8 @@ from .store import Store
 
 
 SENSITIVE_CATEGORIES = {"conflict", "injury", "officiating", "legal", "fan_quote"}
+STANCE_VALUES = frozenset({"push", "use_if_raised", "steer_away"})
+DEFAULT_OVERRIDE_ROLES = ("League GM", "LK director")
 _RECORD_WORD = re.compile(r"\b(?:most|fewest|first|last|record|highest|lowest|best|worst|longest)\b", re.IGNORECASE)
 _BOUNDARY = re.compile(r"\bsince\s+(?:at\s+least\s+)?(?:2015-16|2015/16|2015–16|2015)\b", re.IGNORECASE)
 
@@ -82,6 +84,34 @@ def needs_boundary(claim: str) -> bool:
 
 def boundary_ok(claim: str) -> bool:
     return not needs_boundary(claim) or "since at least" in claim.lower()
+
+
+def is_promotable(
+    store: Store, finding_id: int, *, override_roles: tuple[str, ...] | list[str] = DEFAULT_OVERRIDE_ROLES,
+) -> bool:
+    """Whether a finding can be put forward as an editorial suggestion.
+
+    A normal positive stance permits a sensitive finding only while nobody has
+    steered away.  A positive stance from an override role clears ordinary
+    blocks; it is also the only way to clear an override role's block.
+    """
+    finding = store.get_finding(finding_id)
+    if finding.get("sensitivity") not in SENSITIVE_CATEGORIES:
+        return True
+    stances = store.stances(finding_id)
+    positive = [item for item in stances if item.get("stance") in {"push", "use_if_raised"}]
+    if not positive:
+        return False
+    blocked = [item for item in stances if item.get("stance") == "steer_away"]
+    if not blocked:
+        return True
+    overrides = set(override_roles)
+    override_positive = [item for item in positive if item.get("role") in overrides]
+    if not override_positive:
+        return False
+    # An override positive stance explicitly clears all ordinary blocks and is
+    # the required authority for an override block.
+    return True
 
 
 def apply_gates(store: Store, run_id: int, *, stats_db: str | Path, as_of: str | datetime) -> dict[str, Any]:

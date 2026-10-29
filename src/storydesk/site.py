@@ -5,6 +5,7 @@ from __future__ import annotations
 from base64 import b64encode
 from datetime import datetime, timedelta, timezone
 from html import escape
+import json
 import os
 from pathlib import Path
 import re
@@ -12,7 +13,8 @@ from typing import Any
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
-from .charts import render_bar_chart, render_line_chart, render_test_result_chart
+from .charts import (render_bar_chart, render_donut_chart, render_line_chart, render_scatter_chart,
+                     render_test_result_chart)
 from .data import as_of_connection
 from .gates import DEFAULT_OVERRIDE_ROLES, SENSITIVE_CATEGORIES, _BOUNDARY, _RECORD_WORD, is_promotable
 from .sqlsafe import validate_safe_sql
@@ -36,6 +38,7 @@ svg { max-width:100%; height:auto; } pre { white-space:pre-wrap; overflow:auto; 
 .table-wrap { overflow-x:auto; } .runs-table { border-collapse:collapse; width:100%; font-size:13px; } .runs-table td,.runs-table th { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:top; } .runs-section { margin-top:28px; } .runs-section details { margin:10px 0; }
 .board-top { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; padding:10px 14px; margin:-18px -18px 0; border-bottom:1px solid var(--border); background:var(--surface); border-radius:12px 12px 0 0; } .board-summary { padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; } .board-summary details { margin-top:6px; } .board-label.gap { margin-top:18px; }
 .angle-title { font-weight:700; } .angle-claim { font-size:13px; margin:4px 0 8px; } .angle-evidence { display:grid; grid-template-columns:minmax(0,320px) 1fr; gap:12px; align-items:start; background:var(--surface); border-radius:7px; padding:8px 10px; } .angle-evidence.chartless { display:block; } .evidence-summary { font-size:12px; }
+.extra-chart { margin:12px 0 0; } .extra-chart svg { display:block; } .extra-chart details { font-size:12px; margin-top:4px; }
 .chart-card { border:1px solid var(--border); border-radius:9px; padding:12px; margin:14px 0; } .chart-title { font-weight:700; margin-bottom:6px; } .how-we-know { margin-top:8px; background:var(--surface); border-radius:6px; padding:6px 10px; font-size:12px; } .how-we-know details { margin-top:4px; }
 .timeline { border-left:2px solid var(--border); margin-left:6px; padding-left:16px; } .timeline-step { margin:10px 0; font-size:13px; } .timeline-step p { margin:3px 0; } .step-tag { background:var(--surface); border:1px solid var(--border); font-size:10px; font-weight:700; letter-spacing:.05em; padding:0 5px; border-radius:4px; text-transform:uppercase; }
 .follow-card { border:1px dashed var(--border); border-radius:8px; margin:8px 0; padding:9px; } .follow-card > strong { display:block; line-height:1.35; } .follow-card p { font-size:13px; margin:4px 0; } .request-answers { margin:4px 0 0; padding-left:16px; font-size:12px; } .request-row small,.directive small { display:block; font-size:12px; } .quote small { display:block; font-size:12px; margin-top:4px; } .quote blockquote { margin:0; } .stance-records { font-size:12px; margin-top:5px; } .result-link { font-size:12px; margin-top:5px; }
@@ -525,6 +528,86 @@ def _chart(
     return render(title or finding["claim"], labels, values, selected[0], chart["y_label"], width=width, height=height)
 
 
+_EXTRA_CHARTS_FILE = "extra-charts.json"
+_EXTRA_COLUMNS = {"donut": ("label", "value"), "scatter": ("label", "x", "y"), "line": ("label", "value")}
+_EXTRA_HEIGHT = {"donut": 300, "scatter": 360, "line": 340}   # at the default width of 600
+
+
+def _load_extra_charts(path: Path | None) -> dict[int, list[dict[str, Any]]]:
+    """Read the optional list of {finding_id, kind, title, sql, x_label?, y_label?, highlight?}, grouped by finding.
+
+    A missing or unreadable file, and any entry that isn't usable, is skipped: the pages build without it."""
+    if path is None:
+        return {}
+    try:
+        entries = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    grouped: dict[int, list[dict[str, Any]]] = {}
+    for entry in entries if isinstance(entries, list) else ():
+        if (isinstance(entry, dict) and type(entry.get("finding_id")) is int and entry.get("kind") in _EXTRA_COLUMNS
+                and isinstance(entry.get("title"), str) and entry["title"].strip() and isinstance(entry.get("sql"), str)):
+            grouped.setdefault(entry["finding_id"], []).append(entry)
+    return grouped
+
+
+def _extra_chart(stats_db: str | Path, entry: dict[str, Any], as_of: str, *, width: int = 600) -> str:
+    """Draw one extra chart only from the rows its query returns at the run's cutoff; "" if it can't be drawn.
+
+    Columns: donut label,value · scatter label,x,y · line label,value. `highlight` names the one row (by its label)
+    to emphasise. A line gets a dashed reference line at the mean of its values."""
+    kind = entry["kind"]
+    try:
+        sql = validate_safe_sql(entry["sql"])
+        con = as_of_connection(stats_db, as_of)
+        try:
+            cursor = con.execute(sql)
+            columns = [item[0].lower() for item in cursor.description]
+            rows = cursor.fetchall()
+        finally:
+            con.close()
+    except Exception:
+        return ""
+    if not rows or not set(_EXTRA_COLUMNS[kind]) <= set(columns):
+        return ""
+    height = round(_EXTRA_HEIGHT[kind] * width / 600)
+    title = entry["title"].strip()
+    x_label, y_label, highlight = entry.get("x_label"), entry.get("y_label"), entry.get("highlight")
+    try:
+        column = lambda name: [row[columns.index(name)] for row in rows]
+        labels = [str(label) for label in column("label")]
+        index = None
+        if highlight is not None:
+            matches = [position for position, label in enumerate(labels) if label == highlight]
+            if not isinstance(highlight, str) or len(matches) != 1:
+                return ""
+            index = matches[0]
+        if kind == "donut":
+            return render_donut_chart(title, labels, [float(v) for v in column("value")], index,
+                                      y_label if isinstance(y_label, str) else None, width=width, height=height)
+        if kind == "scatter":
+            return render_scatter_chart(title, labels, [float(v) for v in column("x")], [float(v) for v in column("y")], index,
+                                        x_label if isinstance(x_label, str) else None,
+                                        y_label if isinstance(y_label, str) else None, width=width, height=height)
+        values = [float(v) for v in column("value")]
+        average = round(sum(values) / len(values), 2)
+        return render_line_chart(title, labels, values, index, y_label if isinstance(y_label, str) else None, width=width,
+                                 height=height, reference=average, reference_label=f"Average {average:g}")
+    except (TypeError, ValueError, OverflowError):
+        return ""
+
+
+def _extra_chart_blocks(stats_db: str | Path, entries: list[dict[str, Any]], as_of: str) -> str:
+    """The finding page's extra charts, each with the query that drew it."""
+    blocks = []
+    for entry in entries:
+        svg = _extra_chart(stats_db, entry, as_of)
+        if svg:
+            blocks.append(f'<div class="extra-chart" data-extra-chart="{entry["kind"]}">{svg}<details><summary>Show the chart\'s query</summary>'
+                          f'<pre>{escape(entry["sql"].strip(), quote=False)}</pre></details></div>')
+    return "".join(blocks)
+
+
 def _score_for_run(store: Store, stats_db: str | Path, run: dict[str, Any], game_id: str) -> tuple[str, str]:
     """The score and quarter line as plain text, without manufacturing either one."""
     game = _game_for_run(store, stats_db, run, game_id)
@@ -779,11 +862,13 @@ def _request_blocks(store: Store, finding: dict[str, Any], pages: set[int], publ
     return "".join(blocks) or '<p class="muted">No follow-up requests yet.</p>'
 
 
-def _finding_page(store: Store, stats_db: str | Path, finding: dict[str, Any], pages: set[int], published_run_ids: set[int]) -> str:
+def _finding_page(store: Store, stats_db: str | Path, finding: dict[str, Any], pages: set[int], published_run_ids: set[int],
+                  extra_charts: list[dict[str, Any]] | tuple[()] = ()) -> str:
     run = store.get_run(finding["run_id"])
     game_id = run["game_id"]
     evidence = store.evidence(finding["id"])
     chart = _chart(stats_db, finding, run["as_of"])
+    extra = _extra_chart_blocks(stats_db, list(extra_charts), run["as_of"])
     chart_query = finding.get("query") or (finding.get("chart") or {}).get("query")
     query_html = (f'<details><summary>Show the query</summary><pre>{escape(str(chart_query), quote=False)}</pre></details>'
                   if chart_query else '<span class="muted">Recheck data unavailable.</span>')
@@ -842,7 +927,7 @@ def _finding_page(store: Store, stats_db: str | Path, finding: dict[str, Any], p
         '<div class="detail-grid"><section class="detail-main"><h2>Full finding</h2>'
         f'<p>{escape(str(finding.get("claim") or ""), quote=False)}</p>'
         f'<section class="chart-card"><div class="chart-title">{escape(chart_title, quote=False)}</div>'
-        + (chart or '<p class="muted">No chart was released for this finding.</p>')
+        + (chart or ('' if extra else '<p class="muted">No chart was released for this finding.</p>')) + extra
         + f'<div class="how-we-know"><strong>How we know · rechecked by code</strong>{query_html}</div></section>'
         f'<h2>How the agents got here</h2>{trail_html}</section><aside class="detail-side"><h2>What people said</h2>{quotes_html}'
         f'<h2 aria-label="Suggested follow-ups">Follow the lead</h2>{_followups_html(finding, game_id)}'
@@ -890,14 +975,22 @@ def _inbox_row(time: str, subject: str, preview: str, kind: str, href: str | Non
             f'<span class="s">{subject_html}</span><span class="tag">{kind.replace("_", "-")}</span></div>')
 
 
-def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_id: str) -> list[Path]:
-    """Build the approved R1 inbox, packets, board, and finding pages."""
+def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_id: str,
+               extra_charts: str | Path | None = None) -> list[Path]:
+    """Build the approved R1 inbox, packets, board, and finding pages.
+
+    `extra_charts` is the optional extra-charts.json; by default the one beside the store."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     assets = out / "assets"
     assets.mkdir(exist_ok=True)
     stylesheet = assets / "agora.css"
     stylesheet.write_text(AGORA_CSS, encoding="utf-8")
+    for stale in assets.glob("extra-chart-*.svg"):
+        stale.unlink()
+    store_path = getattr(store, "path", None)
+    extra = _load_extra_charts(Path(extra_charts) if extra_charts is not None
+                               else Path(store_path).parent / _EXTRA_CHARTS_FILE if store_path is not None else None)
     runs, findings = _published_content(store, game_id)
     published_run_ids = {run["id"] for run in runs}
     run_by_id = {run["id"]: run for run in runs}
@@ -907,7 +1000,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
         page.unlink()
     for finding in findings:
         output.append(_write(out / "findings" / f'{finding["id"]}.html', _copy_headline(finding),
-                             _finding_page(store, stats_db, finding, pages, published_run_ids), asset_root=out))
+                             _finding_page(store, stats_db, finding, pages, published_run_ids, extra.get(finding["id"], ())), asset_root=out))
 
     by_type = {kind: next((run for run in reversed(runs) if run.get("run_type") == kind), None)
                for kind in ("pre_game", "post_game", "supplemental", "follow_up")}
@@ -975,6 +1068,11 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
         top_svg = _chart(stats_db, top, post["as_of"], width=520, height=260, title=_copy_headline(top))
         if top_svg:
             top_chart = f'<img class="chart" alt="{escape(_copy_headline(top), quote=True)}" src="{_image(top_svg)}">'
+        for number, entry in enumerate(extra.get(top["id"], ()), 1):   # an email image is a file, never an inline <svg>
+            if svg := _extra_chart(stats_db, entry, post["as_of"], width=520):
+                name = f"extra-chart-{top['id']}-{number}.svg"
+                (assets / name).write_text(svg, encoding="utf-8")
+                top_chart += f'<img class="chart" alt="{escape(entry["title"], quote=True)}" src="assets/{name}">'
     top_html = (_story_box(store, top, prefix="", chart=top_chart,
                            test_html=escape(_top_reason(top, promotable, len(post_stories) - 1), quote=False))
                 if top else '<p>No top pick is promotable yet.</p>')

@@ -1,0 +1,25 @@
+[
+  {
+    "finding_id": 10,
+    "kind": "line",
+    "title": "Bryce Cotton's points in each game against Melbourne since 2015-16",
+    "sql": "select strftime(r.match_time_utc, '%Y-%m-%d') as label, b.points as value from box_player b join results r on r.match_id = b.match_id where b.first_name = 'Bryce' and b.family_name = 'Cotton' and b.opp_name = 'Melbourne United' order by r.match_time_utc, b.match_id",
+    "y_label": "Points"
+  },
+  {
+    "finding_id": 25,
+    "kind": "scatter",
+    "title": "Every 30-point game since 2015-16: minutes played and points",
+    "sql": "select first_name || ' ' || family_name || ', ' || points || ' pts in ' || minutes as label, (cast(split_part(minutes, ':', 1) as int) * 60 + cast(split_part(minutes, ':', 2) as int)) / 60.0 as x, points as y from box_player where points >= 30 and minutes is not null and season >= '2015-2016' order by x, label",
+    "x_label": "Minutes played",
+    "y_label": "Points",
+    "highlight": "Cole Anthony, 30 pts in 21:50"
+  },
+  {
+    "finding_id": 30,
+    "kind": "donut",
+    "title": "Where Adelaide's 97 points came from",
+    "sql": "select label, value from (select 1 as ord, 'Threes' as label, three_pointers_made * 3 as value from box_team where match_id='36dbeb55-58ad-11f1-a69b-43a6b5595d3e' and name='Adelaide 36ers' union all select 2, 'Twos', two_pointers_made * 2 from box_team where match_id='36dbeb55-58ad-11f1-a69b-43a6b5595d3e' and name='Adelaide 36ers' union all select 3, 'Free throws', free_throws_made from box_team where match_id='36dbeb55-58ad-11f1-a69b-43a6b5595d3e' and name='Adelaide 36ers') order by ord",
+    "y_label": "points"
+  }
+]

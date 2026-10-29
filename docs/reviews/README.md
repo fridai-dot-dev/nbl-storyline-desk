@@ -1,6 +1,6 @@
 # Review trail
 
-`docs/handoffs/` holds the round-1 build brief.
+`docs/handoffs/` holds the build briefs: round 1, and the rebuild that matched the site to the mockups.
 
 History was rewritten once before publishing, to remove private working notes. Every commit was kept, and the hashes cited here are the rewritten ones.
 
@@ -8,6 +8,7 @@ History was rewritten once before publishing, to remove private working notes. E
 - `2026-10-28-sanity-check-findings.md` — technical sanity-check findings; it preserves the evidence behind the design assumptions and divergences.
 - `2026-10-28-builder-check.md` — cold builder check; it records the seven questions resolved before the build.
 - `2026-10-29-sol-final-review.md` — Sol's final pre-publication review; it records five findings, how each was fixed, and the guessed stats links found while fixing.
+- `2026-10-29-sol-layout-review.md` — the site rebuilt to match the mockups; it records Sol's three findings, the fix round, and the defects Claude fixed afterwards.
 - `codex-prompts/build.md` — initial Codex build prompt; it makes the approved brief and boundaries auditable.
 - `codex-prompts/fix.md` — Codex fix-round prompt; it ties Sol's findings to the required fixes.
 - `codex-prompts/light1.md` — Codex prompt for smoke-run logging and source validation fixes.
@@ -25,6 +26,9 @@ History was rewritten once before publishing, to remove private working notes. E
 - `codex-prompts/landing.md` — Codex prompt for visible sign-offs, re-judging separation and the guided landing page.
 - `codex-prompts/final-fix.md` — Sol fix-round prompt for the final pre-publication review.
 - `codex-prompts/headline.md` — Terra light-path prompt: record headlines carry their claim's data boundary.
+- `codex-prompts/layout-readiness.md` — Terra's read-only readiness prompt for the mockup-layout rebuild.
+- `codex-prompts/layout-build.md` — Terra build prompt for the mockup-layout rebuild.
+- `codex-prompts/layout-fix.md` — Sol fix-round prompt for the layout review, with Claude's visual findings in `codex-prompts/layout-visual-findings.md`.
 - `codex-reports/build.md` — Codex build report; it records the initial implementation and 75 passing checks.
 - `codex-reports/fix.md` — Codex fix report; it records the Sol fix round and 95 passing checks.
 - `codex-reports/light1.md` — Codex report for smoke-run logging and source validation work.
@@ -42,3 +46,6 @@ History was rewritten once before publishing, to remove private working notes. E
 - `codex-reports/landing.md` — Codex report for the landing-page round.
 - `codex-reports/final-fix.md` — Sol's fix-round report for the final review; it records the contradicting older check it would not edit.
 - `codex-reports/headline.md` — Terra's report for the record-headline boundary fix.
+- `codex-reports/layout-readiness.md` — Terra's readiness report for the layout rebuild; no open questions.
+- `codex-reports/layout-build.md` — Terra's build report for the layout rebuild.
+- `codex-reports/layout-fix.md` — Sol's fix-round report for the layout review.

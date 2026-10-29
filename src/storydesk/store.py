@@ -59,7 +59,7 @@ class Store:
                 CREATE TABLE IF NOT EXISTS directives (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, owner_role TEXT NOT NULL, text TEXT NOT NULL,
                     mandatory INTEGER NOT NULL DEFAULT 0, expires TEXT, status TEXT NOT NULL DEFAULT 'active',
-                    created_at TEXT NOT NULL
+                    simulated INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS signoffs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, finding_id INTEGER NOT NULL REFERENCES findings(id),
@@ -90,6 +90,7 @@ class Store:
             self._add_column_if_missing(con, "runs", "exec_summary", "TEXT")
             self._add_column_if_missing(con, "findings", "headline", "TEXT")
             self._add_column_if_missing(con, "findings", "followups", "TEXT NOT NULL DEFAULT '[]'")
+            self._add_column_if_missing(con, "directives", "simulated", "INTEGER NOT NULL DEFAULT 1")
 
     @staticmethod
     def _add_column_if_missing(con: sqlite3.Connection, table: str, name: str, definition: str) -> None:
@@ -259,11 +260,13 @@ class Store:
         with self._con() as con:
             return [dict(row) for row in con.execute(sql + " ORDER BY id", args).fetchall()]
 
-    def add_directive(self, owner_role: str, text: str, mandatory: bool = False, expires: str | None = None) -> int:
+    def add_directive(
+        self, owner_role: str, text: str, mandatory: bool = False, expires: str | None = None, simulated: bool = True,
+    ) -> int:
         with self._con() as con:
             cur = con.execute(
-                "INSERT INTO directives (owner_role, text, mandatory, expires, created_at) VALUES (?, ?, ?, ?, ?)",
-                (owner_role, text, int(mandatory), expires, _now()),
+                "INSERT INTO directives (owner_role, text, mandatory, expires, simulated, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (owner_role, text, int(mandatory), expires, int(simulated), _now()),
             )
             return int(cur.lastrowid)
 

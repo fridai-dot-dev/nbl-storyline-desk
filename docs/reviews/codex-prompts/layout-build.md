@@ -1,0 +1,1 @@
+The brief answers everything you'd need. Build it per `docs/handoffs/2026-10-29-mockup-layout.md`. Done when the done command in the brief exits 0 (the whole offline suite with the four listed deselects; delete `.pytest_tmp` afterwards). Never edit anything under `tests/`. Don't commit. End with the report the brief asks for.

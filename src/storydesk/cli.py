@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import sqlite3
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,6 +19,7 @@ from .store import Store
 
 
 OPENER = "36dbeb55-58ad-11f1-a69b-43a6b5595d3e"
+_SIMULATED_ACTIONS = {"back", "comment", "drop", "using it", "already had it", "not for us", "ask a follow-up"}
 
 
 def _fetch(args: argparse.Namespace) -> int:
@@ -121,6 +123,87 @@ def _site(args: argparse.Namespace) -> int:
     return 0
 
 
+def _simulate(args: argparse.Namespace) -> int:
+    """Replace only the labelled simulated collaboration round in one transaction."""
+    try:
+        payload = json.loads(Path(args.file).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"could not read simulated round: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("simulated round must be a JSON object")
+    feedback, directives = payload.get("feedback"), payload.get("directives")
+    if not isinstance(feedback, list) or not isinstance(directives, list):
+        raise ValueError("simulated round needs feedback and directives lists")
+
+    checked_feedback: list[tuple[int, str, str, str | None]] = []
+    checked_directives: list[tuple[str, str, bool, str | None]] = []
+    for item in feedback:
+        if not isinstance(item, dict):
+            raise ValueError("each feedback item must be an object")
+        finding_id, role, action, text = item.get("finding_id"), item.get("role"), item.get("action"), item.get("text")
+        if not isinstance(finding_id, int) or isinstance(finding_id, bool):
+            raise ValueError("feedback finding_id must be an integer")
+        if not isinstance(role, str) or not role.strip() or action not in _SIMULATED_ACTIONS:
+            raise ValueError("feedback needs a role and an allowed action")
+        if text is not None and not isinstance(text, str):
+            raise ValueError("feedback text must be a string or null")
+        checked_feedback.append((finding_id, role, action, text))
+    for item in directives:
+        if not isinstance(item, dict):
+            raise ValueError("each directive item must be an object")
+        owner_role, text, mandatory, expires = item.get("owner_role"), item.get("text"), item.get("mandatory", False), item.get("expires")
+        if not isinstance(owner_role, str) or not owner_role.strip() or not isinstance(text, str) or not text.strip():
+            raise ValueError("directive needs owner_role and text")
+        if not isinstance(mandatory, bool) or expires is not None and not isinstance(expires, str):
+            raise ValueError("directive mandatory must be boolean and expires must be a string or null")
+        checked_directives.append((owner_role, text, mandatory, expires))
+
+    # Resolve every target through a genuinely read-only handle before Store.init
+    # is allowed to create, migrate, or otherwise touch the ledger.
+    store_path = Path(args.store)
+    if not store_path.is_file():
+        raise ValueError(f"store does not exist: {store_path}")
+    target_ids = {finding_id for finding_id, _role, _action, _text in checked_feedback}
+    try:
+        read_only = sqlite3.connect(f"{store_path.resolve().as_uri()}?mode=ro", uri=True)
+        try:
+            read_only.execute("PRAGMA query_only = ON")
+            if target_ids:
+                placeholders = ",".join("?" for _ in target_ids)
+                found_ids = {
+                    int(row[0]) for row in read_only.execute(
+                        f"SELECT id FROM findings WHERE id IN ({placeholders})", sorted(target_ids),
+                    ).fetchall()
+                }
+            else:
+                read_only.execute("SELECT id FROM findings WHERE 0").fetchall()
+                found_ids = set()
+        finally:
+            read_only.close()
+    except sqlite3.Error as exc:
+        raise ValueError(f"could not validate store: {exc}") from exc
+    missing_ids = target_ids - found_ids
+    if missing_ids:
+        raise KeyError(f"unknown finding id: {min(missing_ids)}")
+
+    store = Store(store_path)
+    store.init()
+    with store._con() as con:
+        con.execute("DELETE FROM feedback WHERE simulated = 1")
+        con.execute("DELETE FROM directives WHERE simulated = 1")
+        con.executemany(
+            "INSERT INTO feedback (finding_id, role, action, text, simulated, created_at) VALUES (?, ?, ?, ?, 1, ?)",
+            [(finding_id, role, action, text, datetime.now(timezone.utc).replace(microsecond=0).isoformat())
+             for finding_id, role, action, text in checked_feedback],
+        )
+        con.executemany(
+            "INSERT INTO directives (owner_role, text, mandatory, expires, simulated, created_at) VALUES (?, ?, ?, ?, 1, ?)",
+            [(owner_role, text, int(mandatory), expires, datetime.now(timezone.utc).replace(microsecond=0).isoformat())
+             for owner_role, text, mandatory, expires in checked_directives],
+        )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="storydesk")
     subs = parser.add_subparsers(dest="command", required=True)
@@ -164,5 +247,9 @@ def main(argv: list[str] | None = None) -> int:
     site.add_argument("--out-dir", default="site")
     site.add_argument("--game", default=OPENER)
     site.set_defaults(func=_site)
+    simulate = subs.add_parser("simulate")
+    simulate.add_argument("--store", required=True)
+    simulate.add_argument("--file", required=True)
+    simulate.set_defaults(func=_simulate)
     args = parser.parse_args(argv)
     return int(args.func(args))

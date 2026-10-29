@@ -420,3 +420,86 @@ def test_email_has_no_repeated_lead_in_and_counts_angles_in_words(demo_store, tm
     happened = email.split("What happened", 1)[1].split("<h2", 1)[0]
     assert "<strong>What happened.</strong>" not in happened
     assert not re.search(r"\b1 angles\b", email)
+
+
+# ---------- second fix round (Claude, at Bart's request): defects left after Sol's fix round ----------
+
+def _axis_texts(svg):
+    import xml.etree.ElementTree as ET
+
+    root = ET.fromstring(svg)
+    labels = [n for n in root.iter() if n.tag.split("}")[-1] == "text" and n.get("data-axis-label") == "x"]
+    return root, labels
+
+
+@pytest.mark.parametrize("kind", ["bar", "line"])
+def test_full_size_charts_keep_their_labels_whole(kind):
+    from storydesk.charts import render_bar_chart, render_line_chart
+
+    render = render_bar_chart if kind == "bar" else render_line_chart
+    _, labels = _axis_texts(render("Seconds played", LONG_LABELS, [1310, 1382, 1403, 1426, 1446, 1465], 0, "Seconds"))
+    assert [n.text for n in labels] == LONG_LABELS                     # shortened only when the canvas can't fit them
+
+
+@pytest.mark.parametrize("size", [(680, 340), (320, 190)])
+@pytest.mark.parametrize("kind", ["bar", "line"])
+def test_rotated_labels_clear_the_canvas_edge_with_room_to_spare(kind, size):
+    from storydesk.charts import check_chart, render_bar_chart, render_line_chart
+
+    render = render_bar_chart if kind == "bar" else render_line_chart
+    width, height = size
+    svg = render("Seconds played", LONG_LABELS, [1310, 1382, 1403, 1426, 1446, 1465], 0, "Seconds",
+                 width=width, height=height)
+    root, labels = _axis_texts(svg)
+    for node in labels:
+        reach = len(node.text) * 7.0 * 0.7071                          # a wider, safer glyph estimate than 6.5px
+        x, y = float(node.get("x")), float(node.get("y"))
+        assert y + reach + 4 <= height and x - reach - 4 >= 0, f"{node.text!r} touches the edge at {size}"
+    assert check_chart(svg, "Seconds played") == []                    # shortened labels still name their category
+
+
+def test_compact_charts_label_only_the_highlighted_value():
+    import xml.etree.ElementTree as ET
+
+    from storydesk.charts import render_bar_chart
+
+    values = [69.8, 66.9, 66.2, 72.2, 66.8, 70, 73, 81, 74.9, 77.3, 75]
+    labels = [f"{y}-{y + 1}" for y in range(2015, 2026)]
+    for width, height, expected in ((320, 190, ["74.9"]), (680, 340, [f"{v:g}" for v in values])):
+        root = ET.fromstring(render_bar_chart("Starter share", labels, values, 8,
+                                              "Adelaide starter share of points (%), season average",
+                                              width=width, height=height))
+        texts = [n for n in root.iter() if n.tag.split("}")[-1] == "text" and n.get("data-axis-label") is None]
+        shown = [n.text for n in texts if re.fullmatch(r"[\d.]+", n.text or "")]
+        assert shown == expected, (width, shown)
+        y_label = next(n for n in texts if not re.fullmatch(r"[\d.]+", n.text or ""))
+        assert float(y_label.get("x")) + len(y_label.text) * 6.5 <= width, "the y label fits the canvas"
+
+
+def test_card_descriptions_skip_meta_lead_ins(demo_store, tmp_path):
+    store = demo_store.store
+    store.update_finding(demo_store.f_child, claim=(
+        "User follow-up to finding 2. Adelaide's 26-point third quarter was its best of the game. It came off the bench."))
+    index = _read(_build(demo_store, tmp_path), "index.html")
+    text = html.unescape(_angle_cards(index)[demo_store.f_child]["body"])
+    assert "User follow-up to finding" not in text
+    assert "Adelaide's 26-point third quarter was its best of the game." in text
+
+
+def test_email_held_rows_put_the_headline_on_its_own_line(demo_store, tmp_path):
+    email = _email(demo_store, tmp_path)
+    held = email.split("Held for sign-off", 1)[1].split("<h2", 1)[0]
+    rows = re.findall(r'<div class="held-row[^"]*">(.*?)(?=<div class="held-row|$)', held, re.S)
+    assert rows
+    for row in rows:
+        assert re.match(r'\s*<a href="\.\./findings/\d+\.html">', row), "the headline leads the row"
+        meta = row.find('class="held-meta')
+        assert meta > row.find("</a>") > 0, "badge, sign-off note and buttons sit on a line under the headline"
+        assert "Keep internal" in row[meta:]
+
+
+def test_cards_are_well_formed(demo_store, tmp_path):
+    out = _build(demo_store, tmp_path)
+    for page in out.rglob("*.html"):
+        text = page.read_text(encoding="utf-8")
+        assert text.count("<article") == text.count("</article>"), page.name

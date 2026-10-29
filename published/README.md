@@ -9,6 +9,10 @@
 - `digests/supplemental/` uses the post-interview cutoff, 2026-09-19T12:50:00+00:00.
 - `digests/follow_up/` uses the final-whistle cutoff and anchor finding 34.
 
+## Simulated feedback round
+
+`simulated-round.json` holds 11 reactions and team-usage marks and 2 directives from generic personas such as League CEO, Head of marketing and NBL Now producer. The design planned this round to show the collaboration loop on the board. It was added to `store.db` after the runs, with `python -m storydesk simulate --store published/store.db --file published/simulated-round.json`, so it didn't steer any run. Every row has `simulated = 1`, and the site labels each item "simulated".
+
 ## Known defects in this snapshot
 
 - **The score line in `game.md`** reads "Melbourne United 95 – 97 97": the formatter printed the away score where the away team's name belonged. The agents saw that line. The quarter scores beside it were right. The formatter is fixed for future runs, and these files are kept as the runs saw them.

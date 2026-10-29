@@ -44,6 +44,7 @@ Each item below became a failing check before it was fixed.
     A link check also found that every stats source link was a URL the agents had guessed, and none resolved. Code now links stats evidence to the real nblR release.
 
     After the first publish, a check of the live site found a record headline that dropped its claim's data boundary. Headlines now carry it too.
+13. Bart compared the live site with the dashboard designed with him, and found it far off: the board, email and finding pages had all drifted into single-column lists. The round-1 brief pointed at the mockups, but no check enforced them, and the simulated feedback round the design planned was never run. Claude wrote 22 structural checks, Terra rebuilt the three pages, and Sol's review found an unescaped run field, a `simulate` command that wrote before validating, and unbounded chart margins. Sol's fix round closed those and most of Claude's 16 visual findings; Claude fixed the rest, starting with axis labels the fix round had cut to seven characters. A labelled simulated round now fills the board's collaboration panels. See [the review](reviews/2026-10-29-sol-layout-review.md).
 
 ## The published run
 
@@ -60,6 +61,6 @@ Runs 3 and 4 stopped at the Pro session limit. They remain in the store and are 
 
 ## Checks and collaboration
 
-160 offline checks pass. The three live checks, D10, D11 and D13, pass against the published store.
+198 offline checks pass. The three live checks, D10, D11 and D13, pass against the published store.
 
 Bart chose the game, the follow-up question called the bench paradox, and the suggested-follow-up feature. His other recorded decisions were: NBL rather than Daniel's Donuts; four run types and follow-up research as a headline feature; a pitch led by cross-source links and collaboration; the build-versus-buy criteria; email for leadership and a board for producers; hidden queries; the accepted deepen answers and definition of a disappointing run; graphics as a future direction; no Claude API spend, with Claude Code as fallback; Apify where useful; and a public repository and site that show the work in full.

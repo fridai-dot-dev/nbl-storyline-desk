@@ -1,0 +1,13 @@
+{
+  "reviews": [
+    {"review_id": "gbp-12-0418", "sentiment": "negative",
+     "themes": [{"theme": "freshness", "quote": "the donuts were stale and dry"}],
+     "mentions_staff": false, "food_safety": false},
+    {"review_id": "gbp-31-0207", "sentiment": "positive",
+     "themes": [{"theme": "service", "quote": "[staff member] at the counter was so quick and friendly"}],
+     "mentions_staff": true, "food_safety": false},
+    {"review_id": "ubereats/14:0091", "sentiment": "negative",
+     "themes": [{"theme": "delivery", "quote": "Arrived squashed"}, {"theme": "wait_time", "quote": "40 minutes late"}],
+     "mentions_staff": false, "food_safety": false}
+  ]
+}

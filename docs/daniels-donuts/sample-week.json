@@ -1,0 +1,210 @@
+{
+  "illustrative": true,
+  "desk": "Review Desk",
+  "subject": "Week to 25 October: what changed in reviews, and why it might have",
+  "week": {"label": "19–25 October 2026", "start": "2026-10-19", "end": "2026-10-25"},
+  "sent": "Monday 26 October, 7:00 am",
+  "recipients": "GM, Operations, Area managers, Marketing, Product · store managers get their own section · internal only",
+  "lead": "Most of this week's change sits in two places: stale donuts after 8 pm at three south-east Melbourne stores, and longer waits at food-court stores while the half-dozen deal ran. One allergen review was escalated on Saturday. Every insight below comes with its evidence, and every suggestion is only a suggestion: comment on any of them.",
+  "stores": [
+    {"store": 3, "region": "Geelong region", "format": "standalone"},
+    {"store": 8, "region": "regional Victoria and the border", "format": "petrol-station kiosk"},
+    {"store": 12, "region": "south-east Melbourne", "format": "standalone"},
+    {"store": 14, "region": "south-east Melbourne", "format": "food court"},
+    {"store": 17, "region": "south-east Melbourne", "format": "standalone"},
+    {"store": 22, "region": "western Melbourne", "format": "food court"},
+    {"store": 26, "region": "western Melbourne", "format": "food court"},
+    {"store": 29, "region": "regional Victoria and the border", "format": "petrol-station kiosk"},
+    {"store": 31, "region": "western Melbourne", "format": "standalone"}
+  ],
+  "charts": {
+    "theme_mix": {
+      "title": "What customers wrote about this week, as a share of coded mentions",
+      "centre_label": "412 reviews",
+      "unit": "%",
+      "slices": [
+        {"label": "Freshness", "value": 24},
+        {"label": "Service", "value": 21},
+        {"label": "Wait time", "value": 17},
+        {"label": "Product range", "value": 13},
+        {"label": "Price and value", "value": 10},
+        {"label": "Delivery", "value": 9},
+        {"label": "Cleanliness", "value": 6}
+      ]
+    },
+    "rating_trend": {
+      "title": "Store 12 · south-east Melbourne: average Google rating by week",
+      "store": 12,
+      "baseline": 4.4,
+      "baseline_label": "3-month baseline 4.4",
+      "points": [
+        {"label": "7 Sep", "rating": 4.4},
+        {"label": "14 Sep", "rating": 4.5},
+        {"label": "21 Sep", "rating": 4.4},
+        {"label": "28 Sep", "rating": 4.4},
+        {"label": "5 Oct", "rating": 4.3},
+        {"label": "12 Oct", "rating": 4.2},
+        {"label": "19 Oct", "rating": 3.9}
+      ]
+    },
+    "store_scatter": {
+      "title": "Transactions per staff hour against wait-time complaints, by store, this week",
+      "x_label": "Transactions per staff hour",
+      "y_label": "Wait-time complaints",
+      "points": [
+        {"store": 3, "x": 19, "y": 2},
+        {"store": 12, "x": 22, "y": 3},
+        {"store": 14, "x": 31, "y": 9},
+        {"store": 17, "x": 20, "y": 2},
+        {"store": 22, "x": 29, "y": 11},
+        {"store": 26, "x": 33, "y": 12},
+        {"store": 31, "x": 21, "y": 1}
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "dd-01",
+      "thread": "network",
+      "headline": "What did customers write about most this week?",
+      "premise": "Freshness and service were the themes customers mentioned most across the whole network, as they have been for the last 3 months. Mentions of waiting grew, and almost all of that growth came from food-court stores.",
+      "number": {"value": "17", "label": "% of mentions were about waiting, up from 11% over the last 3 months"},
+      "status": "Theme shares counted by code from 412 coded reviews; no explanation claimed.",
+      "causal": null,
+      "scope": {"level": "network", "stores": [], "region": null},
+      "sensitivity": null,
+      "chart": "theme_mix",
+      "suggestion": null,
+      "evidence": [
+        {"source": "Google reviews", "detail": "371 reviews posted 19–25 October, each coded by theme with a quote"},
+        {"source": "delivery-platform ratings", "detail": "41 rated orders with written comments from Uber Eats, DoorDash and Menulog"}
+      ]
+    },
+    {
+      "id": "dd-02",
+      "thread": "spike",
+      "headline": "Why did complaints about stale donuts jump after 8 pm at three south-east Melbourne stores?",
+      "premise": "Reviews calling the donuts stale rose at Stores 12, 14 and 17 this week, and most describe an evening visit. The rise coincides with those stores keeping a full display after 8 pm since their closing time moved later on 5 October.",
+      "number": {"value": "23", "label": "reviews mentioning stale donuts after 8 pm, against an average of 6 a week over the last 3 months"},
+      "status": "Coincides with the later closing time and full evening displays at all three stores. Not yet tested.",
+      "causal": "coincides with",
+      "scope": {"level": "region", "stores": [12, 14, 17], "region": "south-east Melbourne"},
+      "sensitivity": null,
+      "chart": "rating_trend",
+      "suggestion": "Suggestion: at one of the three stores, trial a smaller final bake and a reduced display after 8 pm for two weeks, then compare its stale mentions and waste with the other two.",
+      "evidence": [
+        {"source": "Google reviews", "detail": "23 reviews at Stores 12, 14 and 17 mention stale donuts and an evening visit"},
+        {"source": "POS by hour", "detail": "sales after 8 pm make up 9% of the day at all three stores"},
+        {"source": "stock-outs and waste", "detail": "end-of-day waste has risen at all three stores since 5 October"}
+      ]
+    },
+    {
+      "id": "dd-03",
+      "thread": "praise",
+      "headline": "What is one new store manager doing that customers keep praising?",
+      "premise": "Since a new manager started at Store 31 · western Melbourne on 14 September, reviews praising quick, friendly service have risen, and many name the manager. Staff names stay with the area manager and never feed performance reviews.",
+      "number": {"value": "14", "label": "reviews this week praise the service, against 5 a week before the manager started"},
+      "status": "Consistent with the manager change; the other western Melbourne stores show no rise.",
+      "causal": "consistent with",
+      "scope": {"level": "store", "stores": [31], "region": "western Melbourne"},
+      "sensitivity": "named staff",
+      "chart": null,
+      "suggestion": "Suggestion: ask the manager what changed at the counter, and turn it into a short training note for other stores.",
+      "evidence": [
+        {"source": "Google reviews", "detail": "14 reviews praise the service; 9 of them name the manager"},
+        {"source": "rosters and manager changes", "detail": "new manager from 14 September; no other roster change"}
+      ]
+    },
+    {
+      "id": "dd-04",
+      "thread": "promo_side_effect",
+      "headline": "Did the weekday half-dozen deal bring in buyers but slow the food-court counters?",
+      "premise": "The deal sold well at food-court stores, and wait-time complaints at those stores rose in the same lunch hours. Food-court stores were already serving the most transactions per staff hour. The promotions calendar takes the deal to petrol-station kiosks from 2 November.",
+      "number": {"value": "32", "label": "wait-time complaints at Stores 14, 22 and 26 this week, against 11 in the week before the deal"},
+      "status": "Coincides with the deal's lunch-hour redemptions; rosters were not changed for the deal.",
+      "causal": "coincides with",
+      "scope": {"level": "network", "stores": [14, 22, 26], "region": null},
+      "sensitivity": null,
+      "chart": "store_scatter",
+      "suggestion": "Suggestion: before the deal reaches the kiosks, add one staff hour over lunch at food-court stores, or start the deal at 2 pm, and compare waits.",
+      "evidence": [
+        {"source": "promotions calendar", "detail": "weekday half-dozen deal ran 19–25 October at all stores; kiosks join from 2 November"},
+        {"source": "POS by hour", "detail": "food-court redemptions peaked between 12 and 2 pm"},
+        {"source": "rosters and manager changes", "detail": "no extra lunch hours rostered at Stores 14, 22 and 26"},
+        {"source": "Google reviews", "detail": "32 wait-time complaints at the three food-court stores"}
+      ]
+    },
+    {
+      "id": "dd-05",
+      "thread": "data_first",
+      "headline": "Why are kiosk customers buying fewer items per sale when their reviews barely changed?",
+      "premise": "Items per sale at petrol-station kiosks have fallen for four weeks, with no matching change in reviews. Stock records show the glazed range selling out before noon on most days, so customers may be leaving with less than they came for.",
+      "number": {"value": "1.8", "label": "items per sale at petrol-station kiosks this week, against 2.2 over the last 3 months"},
+      "status": "Consistent with morning stock-outs of the glazed range. Other explanations not yet ruled out.",
+      "causal": "consistent with",
+      "scope": {"level": "network", "stores": [8, 29], "region": null},
+      "sensitivity": null,
+      "chart": null,
+      "suggestion": "Suggestion: move one tray of glazed stock onto the morning delivery at Stores 8 and 29 for two weeks, and compare items per sale.",
+      "evidence": [
+        {"source": "POS by hour", "detail": "items per sale has fallen each week since 28 September"},
+        {"source": "stock-outs and waste", "detail": "glazed range sold out before noon on 5 of 7 days"}
+      ]
+    },
+    {
+      "id": "dd-06",
+      "thread": "food_safety",
+      "headline": "Was a customer told a donut was nut-free before an allergic reaction?",
+      "premise": "One Google review posted on Saturday at Store 22 · western Melbourne describes an allergic reaction after a donut the customer says staff called nut-free. The desk doesn't judge the claim. It sent the review to the area manager and the food-safety lead as soon as it was coded.",
+      "number": {"value": "1", "label": "review, escalated on the day it was posted"},
+      "status": "Escalated; the food-safety lead's review is open.",
+      "causal": null,
+      "scope": {"level": "store", "stores": [22], "region": "western Melbourne"},
+      "sensitivity": "food safety",
+      "chart": null,
+      "suggestion": "Suggestion: hold any public reply until the food-safety lead has reviewed it.",
+      "escalated": "Saturday 25 October, 3:40 pm, to the area manager and the food-safety lead",
+      "evidence": [
+        {"source": "Google reviews", "detail": "1 review posted Saturday 25 October"},
+        {"source": "complaints inbox", "detail": "no matching complaint received yet"}
+      ]
+    },
+    {
+      "id": "dd-07",
+      "thread": "quiet_stores",
+      "headline": "Which stores went quiet this week: fewer customers, or just fewer reviews?",
+      "premise": "Stores 3 and 8 each got too few reviews this week for the desk to report their themes, so they are left out of the theme shares. Sales at the regional kiosk also fell, while the Geelong store held steady.",
+      "number": {"value": "4", "label": "reviews each at Stores 3 and 8, below the minimum of 10 a week the desk needs to report a store's themes"},
+      "status": "Below the minimum sample; no themes reported for these stores.",
+      "causal": null,
+      "scope": {"level": "network", "stores": [3, 8], "region": null},
+      "sensitivity": null,
+      "chart": null,
+      "suggestion": "Suggestion: put a QR survey card on the counter at both stores for two weeks, to show whether customers are quieter or simply fewer.",
+      "evidence": [
+        {"source": "Google reviews", "detail": "4 reviews each at Stores 3 and 8"},
+        {"source": "POS by hour", "detail": "transactions against the 3-month average: Store 8 · regional Victoria and the border down 12%, Store 3 · Geelong region within 2%"}
+      ]
+    }
+  ],
+  "store_sections": [
+    {"store": 12, "note": "Stale mentions after 8 pm are the main change this week, and the weekly rating sits below its 3-month baseline.", "finding_ids": ["dd-02"]},
+    {"store": 22, "note": "One allergen review was escalated on Saturday. Wait-time complaints also rose while the lunch deal ran.", "finding_ids": ["dd-06", "dd-04"]},
+    {"store": 31, "note": "Service praise is still rising. The area manager has the detail behind it.", "finding_ids": ["dd-03"]},
+    {"store": 8, "note": "Too few reviews this week to report themes. Thursday's 34°C heat coincides with two reviews about melted glaze.", "finding_ids": ["dd-07", "dd-05"]}
+  ],
+  "meeting": {
+    "day": "Thursday",
+    "note": "The desk keeps this week's session open for Thursday's ops meeting. Ask it a question there and it answers from the same evidence, or tests two explanations side by side.",
+    "questions": [
+      "Should one south-east Melbourne store trial a smaller evening bake?",
+      "Should the half-dozen deal wait for extra lunch staff before it reaches the kiosks?",
+      "Who follows up the allergen review, and when?"
+    ]
+  },
+  "footer": {
+    "run": "Illustrative weekly run",
+    "data_to": "data to Sunday 25 October, 11:59 pm",
+    "cost": "cost appears on a real run"
+  }
+}

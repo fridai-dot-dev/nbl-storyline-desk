@@ -1,0 +1,142 @@
+{
+  "game_id": "36dbeb55-58ad-11f1-a69b-43a6b5595d3e",
+  "override_roles": ["League GM", "LK director"],
+  "runs": [
+    {"key": "pre", "run_type": "pre_game", "as_of": "2026-09-19T06:30:00+00:00", "duration_s": 150, "cost_usd": 1.21, "summary": "Melbourne host Adelaide with three storylines to test."},
+    {"key": "post", "run_type": "post_game", "as_of": "2026-09-19T11:26:37+00:00", "duration_s": 180, "cost_usd": 2.16, "summary": "Adelaide won 97-95 after a decisive difference from three."},
+    {"key": "supplemental", "run_type": "supplemental", "as_of": "2026-09-19T12:20:00+00:00", "duration_s": 55, "cost_usd": 0.42, "summary": "The press conferences added context to the bench story."},
+    {"key": "follow_up", "run_type": "follow_up", "as_of": "2026-09-19T11:26:37+00:00", "duration_s": 35, "cost_usd": 0.22, "summary": "The follow-up checked Adelaide's history."}
+  ],
+  "findings": [
+    {
+      "key": "test_valid", "run": "pre", "agent": "stats", "source_type": "stats", "kind": "checked",
+      "claim": "Can Melbourne keep Bryce Cotton to 21 points or fewer after he averaged 25.3 points last season?",
+      "plain_headline": "Can Melbourne keep Bryce Cotton quiet again?",
+      "premise": "Bryce Cotton averaged 25.3 points last season. Melbourne will have kept him quiet if he scores 21 or fewer.",
+      "metric": "Bryce Cotton points", "threshold": 21, "direction": "at_most", "actual": 26, "outcome": "contradicted",
+      "number": 21, "status": "shipped", "audience": ["leadership", "producers"],
+      "evidence": [
+        {"source_type": "stats", "url": "https://example.test/stats/cotton", "ref": "Cotton:25.3"},
+        {"source_type": "fans", "url": "https://example.test/comments/adelaide", "ref": "2026-09-18", "quote": "Bryce Cotton drives Adelaide."}
+      ]
+    },
+    {
+      "key": "test_mismatch", "run": "pre", "agent": "stats", "source_type": "stats", "kind": "checked",
+      "claim": "Will Adelaide score more than 25 points in the third quarter?",
+      "plain_headline": "Can Adelaide clear 25 points in the third quarter?",
+      "premise": "Adelaide need 26 third-quarter points to clear the test.",
+      "metric": "Adelaide third-quarter points", "threshold": 25, "direction": "above", "actual": 25, "outcome": "confirmed",
+      "number": 25, "status": "shipped", "audience": ["leadership"]
+    },
+    {
+      "key": "test_indeterminate", "run": "pre", "agent": "media", "source_type": "media", "kind": "qualitative",
+      "claim": "Will Melbourne create easier three-point shots for Chris Goulding?",
+      "plain_headline": "Will Melbourne create easier shots for Chris Goulding?",
+      "premise": "The test asks whether Chris Goulding gets easier three-point shots, but the box score cannot measure shot quality.",
+      "metric": "Chris Goulding shot quality", "threshold": null, "direction": "higher", "actual": null, "outcome": "indeterminate",
+      "status": "shipped", "audience": ["producers"]
+    },
+    {
+      "key": "result_valid", "run": "post", "parent": "test_valid", "agent": "stats", "source_type": "stats", "kind": "checked",
+      "claim": "Bryce Cotton scored 26 points, above Melbourne's test line of 21.",
+      "plain_headline": "Did Bryce Cotton beat Melbourne's test line?",
+      "premise": "Bryce Cotton scored 26 points, so Melbourne did not keep him to 21 or fewer.",
+      "number": 26, "query": "SELECT p3_score FROM box_team WHERE match_id = '36dbeb55-58ad-11f1-a69b-43a6b5595d3e' AND name = 'Adelaide 36ers'",
+      "status": "shipped", "audience": ["leadership", "producers"]
+    },
+    {
+      "key": "result_mismatch", "run": "post", "parent": "test_mismatch", "agent": "stats", "source_type": "stats", "kind": "checked",
+      "claim": "Adelaide scored 26 points in the third quarter, not the structured actual of 25.",
+      "plain_headline": "What did Adelaide score in the third quarter?",
+      "premise": "Adelaide scored 26 points in the third quarter.",
+      "number": 26, "query": "SELECT p3_score FROM box_team WHERE match_id = '36dbeb55-58ad-11f1-a69b-43a6b5595d3e' AND name = 'Adelaide 36ers'",
+      "status": "shipped", "audience": ["leadership"]
+    },
+    {
+      "key": "result_indeterminate", "run": "post", "parent": "test_indeterminate", "agent": "stats", "source_type": "stats", "kind": "qualitative",
+      "claim": "The box score does not record whether Chris Goulding's three-point shots were open.",
+      "plain_headline": "Could the box score answer the Chris Goulding test?",
+      "premise": "The box score records attempts and makes, not whether Chris Goulding had an open shot.",
+      "status": "shipped", "audience": ["producers"]
+    },
+    {
+      "key": "top_pick", "run": "post", "agent": "stats", "source_type": "stats", "kind": "checked",
+      "claim": "Adelaide scored 39 points from three and Melbourne scored 21, an 18-point difference in Adelaide's 97-95 win.",
+      "plain_headline": "Did three-point shooting decide Adelaide's win?",
+      "premise": "Adelaide scored 39 points from three and Melbourne scored 21. That 18-point difference came in Adelaide's 97-95 win.",
+      "number": 18, "status": "shipped", "audience": ["leadership", "producers", "social"],
+      "novelty": 0.95, "audience_fit": 0.95, "judge_direction": 0.95,
+      "followups": [
+        {"type": "rarity", "question": "How often has Adelaide won after a 30-point bench deficit?", "why": "Adelaide's history can answer it."},
+        {"type": "comparison", "question": "How did Melbourne's 21 points from three compare with last season?", "why": "The season record provides context."},
+        {"type": "context", "question": "Which Adelaide lineups created the 18-point difference?", "why": "Lineup data can explain the result."}
+      ],
+      "stances": [
+        {"role": "Head of Marketing", "stance": "push", "comment": "Lead social with this tomorrow.", "time": "2026-09-19T11:40:00+00:00", "simulated": true}
+      ]
+    },
+    {
+      "key": "sensitive_none", "run": "post", "agent": "fans", "source_type": "fans", "kind": "qualitative",
+      "claim": "Fans criticised the final possession involving Cole Anthony.",
+      "plain_headline": "What did fans say about Cole Anthony's final possession?",
+      "premise": "Fans criticised Cole Anthony's choices on Melbourne's final possession.",
+      "sensitivity": "fan_quote", "status": "held", "audience": ["social"]
+    },
+    {
+      "key": "sensitive_use", "run": "post", "agent": "commentary", "source_type": "commentary", "kind": "attributed",
+      "claim": "Commentary named knee and back injuries for Isaac Humphries and John Jenkins.",
+      "plain_headline": "What injuries did commentary name for Isaac Humphries and John Jenkins?",
+      "premise": "Commentary said Isaac Humphries had a knee injury and John Jenkins had a back injury; neither club confirmed it.",
+      "sensitivity": "injury", "status": "held", "audience": ["broadcast"],
+      "stances": [
+        {"role": "Head of Comms", "stance": "use_if_raised", "comment": "Attribute it to commentary.", "time": "2026-09-19T11:45:00+00:00", "simulated": true}
+      ]
+    },
+    {
+      "key": "sensitive_override_block", "run": "post", "agent": "fans", "source_type": "fans", "kind": "qualitative",
+      "claim": "Fans claimed the referees gave Melbourne a 10-point gift, while the fourth-quarter free throws were 4 points to 5.",
+      "plain_headline": "Did the fourth-quarter free throws support the 10-point gift claim?",
+      "premise": "The fourth-quarter free throws were 4 points to 5, so the numbers do not support the fans' 10-point gift claim.",
+      "sensitivity": "officiating", "status": "held", "audience": ["producers"],
+      "stances": [
+        {"role": "League GM", "stance": "steer_away", "comment": "Wait for a footage review.", "time": "2026-09-19T11:46:00+00:00", "simulated": true}
+      ]
+    },
+    {
+      "key": "sensitive_conflict", "run": "post", "agent": "media", "source_type": "media", "kind": "qualitative",
+      "claim": "Marketing wants to push Cole Anthony's return while the League GM wants to steer away from the injury angle.",
+      "plain_headline": "Should LK push the Cole Anthony return story?",
+      "premise": "Cole Anthony returned after a calf complaint, creating disagreement over whether LK should promote the injury angle.",
+      "sensitivity": "injury", "status": "held", "audience": ["leadership"],
+      "stances": [
+        {"role": "Marketing", "stance": "push", "comment": "It is the strongest return story.", "time": "2026-09-19T11:47:00+00:00", "simulated": false},
+        {"role": "League GM", "stance": "steer_away", "comment": "Do not promote the injury angle.", "time": "2026-09-19T11:48:00+00:00", "simulated": false}
+      ]
+    },
+    {
+      "key": "sensitive_fifth", "run": "post", "agent": "commentary", "source_type": "commentary", "kind": "attributed",
+      "claim": "Commentary discussed Cole Anthony's reported minutes limit after he scored 30 points.",
+      "plain_headline": "How should LK handle Cole Anthony's reported minutes limit?",
+      "premise": "Commentary linked Cole Anthony's 30 points to a reported minutes limit that Melbourne had not confirmed.",
+      "sensitivity": "injury", "status": "held", "audience": ["broadcast"],
+      "stances": [
+        {"role": "Marketing", "stance": "steer_away", "comment": "Wait for confirmation.", "time": "2026-09-19T11:48:30+00:00", "simulated": true},
+        {"role": "LK director", "stance": "push", "comment": "Use the record with careful attribution.", "time": "2026-09-19T11:49:00+00:00", "simulated": true}
+      ]
+    },
+    {
+      "key": "supp_story", "run": "supplemental", "agent": "media", "source_type": "media", "kind": "attributed",
+      "claim": "Trevor Gleeson said Adelaide's bench stayed composed after half-time.",
+      "plain_headline": "What did Trevor Gleeson say about Adelaide's bench?",
+      "premise": "Trevor Gleeson said Adelaide's bench stayed composed after half-time.",
+      "status": "shipped", "audience": ["producers"]
+    },
+    {
+      "key": "follow_story", "run": "follow_up", "parent": "top_pick", "agent": "stats", "source_type": "stats", "kind": "checked",
+      "claim": "Adelaide had won 3 earlier games after a 30-point bench deficit.",
+      "plain_headline": "How often had Adelaide overcome a 30-point bench deficit?",
+      "premise": "Adelaide had won 3 earlier games after its bench was outscored by 30 points.",
+      "number": 3, "status": "shipped", "audience": ["leadership", "producers"]
+    }
+  ]
+}

@@ -28,6 +28,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
     "live: needs a real Claude run on Bart's login; never run by an unattended loop",
+    "live_data: checks the mutable published data snapshot; excluded until the live copy pass",
 ]
-addopts = "-m 'not live'"
+addopts = "-m 'not live and not live_data'"
 asyncio_mode = "auto"

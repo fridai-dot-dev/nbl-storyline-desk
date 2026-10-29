@@ -21,7 +21,7 @@ _OPUS, _SONNET = "claude-opus-5-5", "claude-sonnet-5-5"
 # role: (model, effort, built-in tools, skills, pre-approved tools, gated write tools, budget in USD)
 _ROLE_SPECS: dict[str, tuple[str, str, list[str], list[str], list[str], tuple[str, ...], float]] = {
     "lead": (_OPUS, "high", ["Skill"], ["theme-coding", "promo-effect"], ["read_data", "read_findings", "write_finding"], WRITE_TOOLS, 2.0),
-    "customer_voice": (_SONNET, "medium", ["Skill"], ["theme-coding"], ["read_data"], (), 0.75),
+    "customer_voice": (_SONNET, "medium", ["Skill"], ["theme-coding"], ["read_data", "StructuredOutput"], (), 0.75),
     "operations": (_SONNET, "medium", ["Bash", "Skill"], ["promo-effect"], ["Bash", "read_data", "write_finding"], (), 0.75),
     "product": (_SONNET, "medium", ["Skill"], ["theme-coding"], ["read_data", "read_findings", "write_finding"], (), 0.75),
     "marketing": (_SONNET, "medium", ["Skill"], ["promo-effect"], ["read_data", "read_findings", "write_finding"], ("draft_promo",), 0.75),
@@ -36,14 +36,16 @@ def _prompt(name: str) -> str:
 
 
 def _pre_approved(name: str) -> str:
-    return name if name in ("Bash", "Skill") else tool_id(name)
+    # StructuredOutput is the tool Claude Code adds for output_format; pre-approved so dontAsk can't refuse it.
+    return name if name in ("Bash", "Skill", "StructuredOutput") else tool_id(name)
 
 
 def _sandbox() -> dict[str, Any]:
-    # The SDK's SandboxSettings type does not list failIfUnavailable or filesystem; Claude Code's sandbox settings do.
+    # The SDK's SandboxSettings type does not list failIfUnavailable, strictAllowlist or filesystem; Claude Code's
+    # sandbox settings do, and the SDK passes this dict through --settings, which can set any user-scope key.
     return {
         "enabled": True, "autoAllowBashIfSandboxed": True, "allowUnsandboxedCommands": False,
-        "failIfUnavailable": True, "network": {"allowedDomains": []},
+        "failIfUnavailable": True, "network": {"allowedDomains": [], "strictAllowlist": True},
         "filesystem": {"denyWrite": [str(AGENT_DIR)]},
     }
 

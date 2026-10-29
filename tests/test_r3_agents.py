@@ -27,7 +27,7 @@ UNSAFE_MODES = {"dontAsk", "bypassPermissions", "acceptEdits", "auto", "plan"}
 ROLE_MATRIX = {
     #  role:            (model,               effort,   built-in tools,    skills,                           pre-approved tools,                                       gated write tools)
     "lead":           ("claude-opus-5-5",   "high",   ["Skill"],         ["theme-coding", "promo-effect"], [f"{R}read_data", f"{R}read_findings", f"{R}write_finding"], WRITE),
-    "customer_voice": ("claude-sonnet-5-5", "medium", ["Skill"],         ["theme-coding"],                 [f"{R}read_data"],                                          set()),
+    "customer_voice": ("claude-sonnet-5-5", "medium", ["Skill"],         ["theme-coding"],                 [f"{R}read_data", "StructuredOutput"],                      set()),
     "operations":     ("claude-sonnet-5-5", "medium", ["Bash", "Skill"], ["promo-effect"],                 ["Bash", f"{R}read_data", f"{R}write_finding"],              set()),
     "product":        ("claude-sonnet-5-5", "medium", ["Skill"],         ["theme-coding"],                 [f"{R}read_data", f"{R}read_findings", f"{R}write_finding"], set()),
     "marketing":      ("claude-sonnet-5-5", "medium", ["Skill"],         ["promo-effect"],                 [f"{R}read_data", f"{R}read_findings", f"{R}write_finding"], {f"{R}draft_promo"}),
@@ -125,6 +125,7 @@ def test_r3_row_43_customer_voice_returns_structured_theme_coding():
 
     options = _options("customer_voice")
     assert options.output_format == {"type": "json_schema", "schema": THEME_CODING_SCHEMA}
+    assert "StructuredOutput" in options.allowed_tools, "dontAsk would refuse the tool output_format adds"
     Draft202012Validator.check_schema(THEME_CODING_SCHEMA)
     Draft202012Validator(THEME_CODING_SCHEMA).validate(fixture("theme_coding_sample.json"))
     for role in set(ROLE_MATRIX) - {"customer_voice"}:
@@ -265,8 +266,9 @@ def test_r3_row_45_operations_is_sandboxed_with_network_off():
     sandbox = options.sandbox
     assert sandbox["enabled"] is True and sandbox["failIfUnavailable"] is True
     assert sandbox["allowUnsandboxedCommands"] is False and sandbox["autoAllowBashIfSandboxed"] is True
-    assert sandbox["network"] == {"allowedDomains": []}, "no host is allow-listed"
-    assert options.permission_mode == "dontAsk", "dontAsk refuses every host outside allowedDomains"
+    assert sandbox["network"] == {"allowedDomains": [], "strictAllowlist": True}, \
+        "no host is allow-listed, and strictAllowlist refuses every other host in every permission mode"
+    assert options.permission_mode == "dontAsk"
     assert str(AGENT_DIR) in sandbox["filesystem"]["denyWrite"], "scratch goes to $TMPDIR, never the skills folder"
     assert "Bash" in options.tools and "Bash" in options.allowed_tools
     assert {"WebFetch", "WebSearch"} <= set(options.disallowed_tools)

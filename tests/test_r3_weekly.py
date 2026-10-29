@@ -141,6 +141,9 @@ def test_r3_row_40_page_uses_the_inbox_format(data, root, mail):
     note = one(root, data_region="internal-note").text().lower()
     for stance in ("push", "use it if it comes up", "steer away", "comment"):
         assert stance in note
+    for label in ("coincides with", "consistent with", "tested"):
+        assert label in note, "the judge's labels are explained before any story uses them"
+    assert "communications" not in note, "a stance is how the business decides, not a comms setting (lesson 10)"
     head = one(mail, cls="head").text()
     assert f"Subject: {data['subject']}" in head and "From: Review Desk" in head
     assert f"To: {data['recipients']}" in head and data["sent"] in head

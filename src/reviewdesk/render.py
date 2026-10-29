@@ -68,7 +68,7 @@ def _story_box(data: dict[str, Any], finding: dict[str, Any]) -> str:
     tag = f' <span class="sensitive-tag">sensitive · {_t(finding["sensitivity"])}</span>' if sensitive else ""
     value, label = str(finding["number"]["value"]), str(finding["number"]["label"])
     joiner = "" if label.startswith("%") else " "
-    causal = (f' Causal label: <span class="causal">{_t(finding["causal"])}</span>'
+    causal = (f' Judge\'s label: <span class="causal">{_t(finding["causal"])}</span>'
               if finding["causal"] else "")
     escalated = f'<div class="escalated">Escalated: {_t(finding["escalated"])}</div>' if finding.get("escalated") else ""
     chart = ""
@@ -113,7 +113,7 @@ def _store_sections(data: dict[str, Any]) -> str:
 def _meeting(data: dict[str, Any]) -> str:
     meeting = data["meeting"]
     questions = "".join(f"<li>{_t(question)}</li>" for question in meeting["questions"])
-    return (f'<section data-section="meeting"><h4>Meeting mode · {_t(meeting["day"])}</h4>'
+    return (f'<section data-section="meeting"><h4>For {_t(meeting["day"])}\'s ops meeting</h4>'
             f'<p>{_t(meeting["note"])}</p><ol>{questions}</ol></section>')
 
 
@@ -145,10 +145,10 @@ def _evidence(data: dict[str, Any]) -> str:
     entries = []
     for finding in data["findings"]:
         items = "".join(f'<li><b>{_t(item["source"])}</b>: {_t(item["detail"])}</li>' for item in finding["evidence"])
-        causal = _t(finding["causal"]) if finding["causal"] else "none claimed"
+        causal = _t(finding["causal"]) if finding["causal"] else "none: no explanation claimed"
         entries.append(
             f'<div class="evidence" id="evidence-{_a(finding["id"])}"><h3>{_t(finding["headline"])}</h3>'
-            f'<p>Status: {_t(finding["status"])}</p><p>Causal label: <span class="causal">{causal}</span></p>'
+            f'<p>Status: {_t(finding["status"])}</p><p>Judge\'s label: <span class="causal">{causal}</span></p>'
             f'<ul>{items}</ul><p><a href="#weekly">Back to the email</a></p></div>'
         )
     return ('<section data-region="evidence"><h2>The evidence behind each story</h2>' + "".join(entries) + "</section>")
@@ -164,9 +164,10 @@ def _inbox_row(data: dict[str, Any]) -> str:
 def _page(data: dict[str, Any]) -> str:
     banner = ('<div class="illustrative" data-region="banner">Illustrative data: a made-up week showing what the Review Desk '
               "would send Daniel's Donuts. Every figure, quote and store detail here is invented for the sample.</div>")
-    note = ('<p class="internal-note" data-region="internal-note">Everyone on this list is internal. Anyone can set a stance on '
-            "any story: push it, use it if it comes up, steer away from it, or leave a comment. A stance says how the "
-            "chain's own communications should treat the story.</p>")
+    note = ('<p class="internal-note" data-region="internal-note">Everyone on this list is internal, and anyone on it can '
+            "set a stance on any story: push it, use it if it comes up, or steer away, with a comment. Each explanation "
+            "carries the judge's label for how far it has been checked: coincides with (the two happened together), "
+            "consistent with (the data fits, but other causes aren't ruled out) or tested (checked against a comparison).</p>")
     heading = f"<h1>Daniel's Donuts · {_t(data['week']['label'])}</h1>"
     body = "\n".join((banner, heading, _inbox_row(data), note, _mail(data), _evidence(data)))
     return (

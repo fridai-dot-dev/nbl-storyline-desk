@@ -1,4 +1,4 @@
-Fix round. The adversarial review of your build returned needs-attention. Fix every finding below; all of them are in scope. The integrator added regression checks in `tests/test_review_fixes.py` (commit 37086d2) and tightened D13 in `tests/test_live.py`. Never edit anything under `tests/`.
+Fix round. The adversarial review of your build returned needs-attention. Fix every finding below; all of them are in scope. The integrator added regression checks in `tests/test_review_fixes.py` (commit 6a249ef) and tightened D13 in `tests/test_live.py`. Never edit anything under `tests/`.
 
 Done when `.venv/bin/python -m pytest -q` exits 0, including `tests/test_review_fixes.py`.
 

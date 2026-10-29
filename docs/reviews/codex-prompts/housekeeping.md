@@ -13,17 +13,17 @@ Write it for the GM – AI at LK Group, who wants to see how the work was done. 
   - Round-1 Prove suite, then the Terra build: 75 checks passing.
   - Sol's adversarial review: 2 critical, 4 high and 2 medium findings (see `docs/reviews/2026-10-28-sol-review-round-1.md`). The integrator wrote regression checks, then the Sol fix round followed: 95 checks.
 - **What live runs exposed,** each turned into a failing check and then a fix. Cite the commits:
-  1. Real data mixed numeric and UUID match IDs, and contained duplicate box rows (`0b18212`).
-  2. The first smoke run lost tool-call attribution rows to SQLite lock contention under parallel specialists, and a specialist used an unknown source type (`5923a75`, `af5e226`).
-  3. The final whistle (11:26:37 UTC) is not the stats sign-off (11:35:07 UTC). The 30-minute cap runs from the whistle (`705dccc`, `b6965c3`).
+  1. Real data mixed numeric and UUID match IDs, and contained duplicate box rows (`289e92d`).
+  2. The first smoke run lost tool-call attribution rows to SQLite lock contention under parallel specialists, and a specialist used an unknown source type (`c5645b3`, `87a8039`).
+  3. The final whistle (11:26:37 UTC) is not the stats sign-off (11:35:07 UTC). The 30-minute cap runs from the whistle (`71438af`, `50662da`).
   4. A pure-Python parse of a 370 MB R file crashed WSL. Lesson: cap memory, and never parse `pbp.rds`.
-  5. The first pre-game run hit the Pro session limit. The lead hadn't been told its cutoff or run ID, and "recent form" was sorted by a column that is always NA (`da0886f`, `002533d`).
-  6. The first post-game run ended while background specialists were still working, because in streaming mode a result arrives before they finish. Search also returned the earliest matches, hiding the fourth quarter (`1f63e0b`, `2c5b02e`).
-  7. The first real site build needed headlines, held badges and run summaries. Smoke runs leaked onto the site, and follow-up requests weren't recorded (`fa99072`, `01dce98`).
-  8. A session-limit error was stored as a run summary, and failed runs reached the site (`f6fdb02`, `70584ab`).
-  9. A record claim buried inside another finding wasn't rechecked. Now there is one checked number per finding (`70584ab`).
-  10. Bart's idea: suggested follow-ups (rarity, on_pace, comparison, context), added through the existing judge pass with no extra agent runs (`7c70eca`, `6435e89`).
-  11. Polish: an exec summary, rendered editor notes, a deduplicated email, chart labels, and a CSS class collision that faded text (`327ea52`, `bf9637b`).
+  5. The first pre-game run hit the Pro session limit. The lead hadn't been told its cutoff or run ID, and "recent form" was sorted by a column that is always NA (`07dad92`, `bdd7760`).
+  6. The first post-game run ended while background specialists were still working, because in streaming mode a result arrives before they finish. Search also returned the earliest matches, hiding the fourth quarter (`ab1f548`, `3005d57`).
+  7. The first real site build needed headlines, held badges and run summaries. Smoke runs leaked onto the site, and follow-up requests weren't recorded (`b538bdb`, `45ae505`).
+  8. A session-limit error was stored as a run summary, and failed runs reached the site (`57cc044`, `e734c55`).
+  9. A record claim buried inside another finding wasn't rechecked. Now there is one checked number per finding (`e734c55`).
+  10. Bart's idea: suggested follow-ups (rarity, on_pace, comparison, context), added through the existing judge pass with no extra agent runs (`04a1b7a`, `851120e`).
+  11. Polish: an exec summary, rendered editor notes, a deduplicated email, chart labels, and a CSS class collision that faded text (`4ca8865`, `727b34a`).
 - **The published run.** Cost is at API prices, run on Bart's Claude subscription, and includes the judge passes.
 
   | Run | ID | Duration | Cost |

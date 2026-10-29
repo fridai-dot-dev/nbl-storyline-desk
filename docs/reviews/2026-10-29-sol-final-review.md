@@ -1,6 +1,6 @@
 # Sol's final pre-publication review (2026-10-29)
 
-**Scope:** everything since round 1 (`65106e0..HEAD`). The review covered site rendering and escaping, the runner's deadline and finalisation paths, public claims checked against `published/store.db` and the code, and leaks of private material.
+**Scope:** everything since round 1 (`a58d645..HEAD`). The review covered site rendering and escaping, the runner's deadline and finalisation paths, public claims checked against `published/store.db` and the code, and leaks of private material.
 
 **Verdict:** needs attention, with 1 high, 3 medium and 1 low finding. All five were fixed. Claude wrote the failing checks in `tests/test_final_review_fixes.py`, Sol made them pass in one fix round ([prompt](codex-prompts/final-fix.md), [report](codex-reports/final-fix.md)), and Claude re-ran the full suite: 155 offline and 3 live checks pass.
 

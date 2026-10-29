@@ -26,7 +26,7 @@ Current `git status --short --branch`:
 Current `git log --oneline --graph main | head -40`:
 
 ```text
-* 2daed2b Add approved design, mockups and lessons for NBL Storyline Desk
+* dec09aa Add approved design, mockups and lessons for NBL Storyline Desk
 ```
 
 Pending commit paths: `.gitignore`, `docs/build-log.md`, `docs/reviews/README.md`, `published/**`, and `site/**`. To finish, this environment needs write access to `.git` so the two commits and no-fast-forward merge can be created.

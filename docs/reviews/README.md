@@ -2,6 +2,8 @@
 
 `docs/handoffs/` holds the round-1 build brief.
 
+History was rewritten once before publishing, to remove private working notes. Every commit was kept, and the hashes cited here are the rewritten ones.
+
 - `2026-10-28-sol-review-round-1.md` — Sol's adversarial round-1 review; it records the defects that required the regression-check and fix round.
 - `2026-10-28-sanity-check-findings.md` — technical sanity-check findings; it preserves the evidence behind the design assumptions and divergences.
 - `2026-10-28-builder-check.md` — cold builder check; it records the seven questions resolved before the build.

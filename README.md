@@ -9,7 +9,7 @@
 
 Each of these came from agents working across the stats, the broadcast, the press conferences and the live fan chat. Code then checked them before release.
 
-- **Cole Anthony scored 30 in 21:50, the fewest minutes for a 30-point game in the box-score data since 2015-16,** across 370 such games up to that night. A specialist found it by branching off a pre-game benchmark nobody had asked about. It's held for sign-off because it touches his reported minutes limit.
+- **Cole Anthony scored 30 in 21:50, the fewest minutes for a 30-point game in the box-score data since 2015-16,** among box rows with minutes recorded: 370 such games up to that night. The stats specialist found it after the game and wrote it as its own checked record. It's held for sign-off because it touches his reported minutes limit.
 - **Melbourne's bench outscored Adelaide's by 30, and Melbourne still lost.** It was a producer's follow-up question. Since 2015-16, the weaker bench has won 18 of 74 games with a gap that size. Adelaide's starter-heavy load wasn't new: it was close to last season's share.
 - **A fan's "10-point referee gift" claim, tested against the play-by-play.** Melbourne scored 4 fourth-quarter free-throw points and Adelaide scored 5. The desk didn't amplify the claim, and it showed the same message had been posted twice in 81 seconds.
 - **Adelaide won from three, not on balance.** They made 13 threes to Melbourne's 7, an 18-point edge, while Melbourne won the two-point battle 58–38.
@@ -85,7 +85,7 @@ Live runs need a Claude login or an `ANTHROPIC_API_KEY`. Building the run corpus
 
 - **One game.** This is a demo on one game, using public stand-ins for LK's own feeds: Genius stats, broadcast audio and social data.
 - **Auto-captions** can mishear names. Any number taken from commentary is quoted or rechecked.
-- **Human acceptance checks are still to do:** a blind fan rating, a backtest against published coverage, and a cold read test.
+- **Human acceptance checks are still to do:** a blind fan rating, a backtest against published coverage, and a cold read test. The headline facts were checked by hand against ESPN's independent box score ([verification](docs/verification.md)).
 - **Not production-hardened:** there's no auth, scheduling or live feeds yet. The [team pitch](docs/team-pitch.md) lists what comes next.
 
 Built by Bart Lind with Claude Code (Opus) orchestrating and Codex building and reviewing.

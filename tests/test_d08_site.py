@@ -77,7 +77,7 @@ def test_held_items_show_as_held_and_handles_never_appear(site):
 def test_email_reports_speed_cost_and_labels_simulated_feedback(site):
     ns, out = site
     email = (out / "outbox" / "post-game-email.html").read_text(encoding="utf-8")
-    assert "after full time" in email.lower()
+    assert re.search(r"cutoff[^<]{0,80}(whistle|full time)", email, re.I)  # replays never claim live timing
     assert "$" in email
     assert ns.store.get_finding(ns.f_checked)["claim"] in email
     assert "simulated" in email.lower()

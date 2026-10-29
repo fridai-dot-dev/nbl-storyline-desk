@@ -171,10 +171,33 @@ def _status_badge(finding: dict[str, Any]) -> str:
 
 
 def _cost_label(run: dict[str, Any]) -> str:
-    label = f"US${float(run.get('cost_usd') or 0):.2f} at API prices"
+    rejudge_cost = _rejudge_cost(run)
+    run_cost = float(run.get("cost_usd") or 0) - rejudge_cost
+    label = f"US${run_cost:.2f} at API prices"
     if run.get("route") == "sdk":
         label += " (run on a Claude subscription)"
+    if rejudge_cost:
+        label += f" · + US${rejudge_cost:.2f} demo re-judging (judge re-run after the run finished)"
     return label
+
+
+def _rejudge_cost(run: dict[str, Any]) -> float:
+    """Return later judge reruns kept in the cumulative run ledger."""
+    usage = run.get("model_usage")
+    if not isinstance(usage, dict) or not isinstance(usage.get("rejudge"), list):
+        return 0.0
+    cost = 0.0
+    for pass_usage in usage["rejudge"]:
+        if not isinstance(pass_usage, dict):
+            continue
+        for model_usage in pass_usage.values():
+            if not isinstance(model_usage, dict):
+                continue
+            try:
+                cost += float(model_usage.get("costUSD") or 0)
+            except (TypeError, ValueError):
+                continue
+    return cost
 
 
 def _chart(stats_db: str | Path, finding: dict[str, Any], as_of: str) -> str:
@@ -367,6 +390,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
     output.append(_write(
         out / "pre-game.html", "Pre-game briefing",
         "<p><a href=\"index.html\">Storyline Desk</a></p><h1>Pre-game briefing</h1>"
+        + (f"<p class=\"muted\">Run cost: {_cost_label(pre)}</p>" if pre else "")
         + ("".join(_finding_card(item, f"findings/{item['id']}.html") for item in pre_findings) or "<p class=\"muted\">No pre-game findings yet.</p>"),
     ))
 
@@ -410,7 +434,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
         suggested_followups = _leadership_followups_html(findings)
         email = (
             "<p><a href=\"../index.html\">Storyline Desk</a></p><h1>Post-game leadership briefing</h1>"
-            f"<section class=\"card\"><h2>{score}</h2><p>Briefing ready {minutes} min after full time · {_cost_label(post)}</p></section>"
+            f"<section class=\"card\"><h2>{score}</h2><p>Run took {minutes} min from a cutoff frozen at the final whistle · {_cost_label(post)}</p></section>"
             f"<h2>What happened</h2><p>{escape(post.get('exec_summary') or 'No executive summary was recorded for this run.', quote=False)}</p>"
             f"<p><strong>Final score:</strong> {score}<br><strong>Quarter scores:</strong> {quarter_scores or 'Not available'}</p>"
             "<h2>What moved since pre-game</h2>" + ("".join(_finding_card(item, f"../findings/{item['id']}.html") for item in moved) or "<p class=\"muted\">No linked pre-game movement recorded.</p>")

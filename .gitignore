@@ -1,8 +1,7 @@
 # Private working files: never publish
 *.pdf
 JD.md
-initial-prompt.md
-polished-prompt.md
+*-prompt.md
 response.md
 
 # Tooling

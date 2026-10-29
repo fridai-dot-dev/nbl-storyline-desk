@@ -1,0 +1,10 @@
+# Published snapshot
+
+`store.db` is a copy of the completed demo store used to publish the static site. It includes the published runs and the retained failed runs that are intentionally excluded from the site.
+
+`digests/` contains the cutoff-safe starting digest regenerated from the project code for each published run. These files show the material made available to the agents at the beginning of each run.
+
+- `digests/pre_game/` uses the pre-game cutoff, 2026-09-19T06:30:00+00:00.
+- `digests/post_game/` uses the final-whistle cutoff, 2026-09-19T11:26:37+00:00.
+- `digests/supplemental/` uses the post-interview cutoff, 2026-09-19T12:50:00+00:00.
+- `digests/follow_up/` uses the final-whistle cutoff and anchor finding 34.

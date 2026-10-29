@@ -332,11 +332,13 @@ In the demo, the usage, novelty and fit numbers come from the simulated round, a
 
 1. **The game (Bart's pick): the NBL27 Round 1 opener, Melbourne United 95–97 Adelaide 36ers, 19 Sep 2026, John Cain Arena.**
    - Match UUID `36dbeb55-58ad-11f1-a69b-43a6b5595d3e`; attendance 9,278.
-   - Tip-off 09:30 UTC (7:30 pm AEST). The final whistle (the "game completed" event) is 11:35:07 UTC (9:35 pm AEST).
+   - Tip-off 09:30 UTC (7:30 pm AEST).
+   - **The final whistle is 11:26:37 UTC (9:26 pm AEST):** the final period's `period / End` event. The Q4 clock hit 0:00 at 11:26:24.
+   - The "game completed" event at 11:35:07 is the official stats sign-off, about nine minutes later. Claude's call: the post-game cutoff and the 30-minute cap both run from the whistle, not the sign-off. The scores are final at the buzzer, though minor stat corrections can follow.
    - The NBL match API returns 916 play-by-play events. Their quarter scores reconcile with `box_team.csv`: MEL 23-25-22-25 = 95, ADL 25-24-26-22 = 97. `score_1` is the home team.
    - **Cutoffs:**
      - pre-game: 06:30 UTC
-     - post-game data: 11:35 UTC, with the briefing out by 12:05 UTC
+     - post-game data: 11:26:37 UTC (the whistle), with the briefing out by 11:56:37 UTC
      - supplemental: once the press conferences finish
 2. **The pre-game run starts about 3 hours before tip-off.**
 3. **The supplemental run is an addendum,** not a repeat of the briefing.

@@ -37,12 +37,12 @@ svg { max-width:100%; height:auto; } pre { white-space:pre-wrap; overflow:auto; 
 .pill.held { white-space:normal; color:var(--sensitive-text); background:var(--sensitive-bg); border-color:var(--sensitive-border); }
 .table-wrap { overflow-x:auto; } .runs-table { border-collapse:collapse; width:100%; font-size:13px; } .runs-table td,.runs-table th { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:top; } .runs-section { margin-top:28px; } .runs-section details { margin:10px 0; }
 .board-top { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; padding:10px 14px; margin:-18px -18px 0; border-bottom:1px solid var(--border); background:var(--surface); border-radius:12px 12px 0 0; } .board-summary { padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; } .board-summary details { margin-top:6px; } .board-label.gap { margin-top:18px; }
-.angle-title { font-weight:700; } .angle-claim { font-size:13px; margin:4px 0 8px; } .angle-evidence { display:grid; grid-template-columns:minmax(0,320px) 1fr; gap:12px; align-items:start; background:var(--surface); border-radius:7px; padding:8px 10px; } .angle-evidence.chartless { display:block; } .evidence-summary { font-size:12px; }
+.angle-title { font-weight:700; } .angle-claim { font-size:13px; margin:4px 0 8px; } .angle-evidence { display:block; background:var(--surface); border-radius:7px; padding:8px 10px; } .angle-evidence svg { display:block; width:100%; height:auto; max-width:640px; } .angle-evidence > div + * { margin-top:8px; } .angle-evidence.chartless { display:block; } .evidence-summary { font-size:12px; }
 .extra-chart { margin:12px 0 0; } .extra-chart svg { display:block; } .extra-chart details { font-size:12px; margin-top:4px; }
 .chart-card { border:1px solid var(--border); border-radius:9px; padding:12px; margin:14px 0; } .chart-title { font-weight:700; margin-bottom:6px; } .how-we-know { margin-top:8px; background:var(--surface); border-radius:6px; padding:6px 10px; font-size:12px; } .how-we-know details { margin-top:4px; }
 .timeline { border-left:2px solid var(--border); margin-left:6px; padding-left:16px; } .timeline-step { margin:10px 0; font-size:13px; } .timeline-step p { margin:3px 0; } .step-tag { background:var(--surface); border:1px solid var(--border); font-size:10px; font-weight:700; letter-spacing:.05em; padding:0 5px; border-radius:4px; text-transform:uppercase; }
 .follow-card { border:1px dashed var(--border); border-radius:8px; margin:8px 0; padding:9px; } .follow-card > strong { display:block; line-height:1.35; } .follow-card p { font-size:13px; margin:4px 0; } .request-answers { margin:4px 0 0; padding-left:16px; font-size:12px; } .request-row small,.directive small { display:block; font-size:12px; } .quote small { display:block; font-size:12px; margin-top:4px; } .quote blockquote { margin:0; } .stance-records { font-size:12px; margin-top:5px; } .result-link { font-size:12px; margin-top:5px; }
-@media (max-width:760px) { main { padding:16px 8px; } .cols,.detail-grid,.board-grid { grid-template-columns:1fr; } .detail-side,.board-angles,.board-right { border-left:0; border-top:1px solid var(--border); } .row { grid-template-columns:60px 1fr; } .row>span:nth-child(2),.row .tag { display:none; } .angle-evidence { grid-template-columns:1fr; } }
+@media (max-width:760px) { main { padding:16px 8px; } .cols,.detail-grid,.board-grid { grid-template-columns:1fr; } .detail-side,.board-angles,.board-right { border-left:0; border-top:1px solid var(--border); } .row { grid-template-columns:60px 1fr; } .row>span:nth-child(2),.row .tag { display:none; } .angle-evidence { display:block; } }
 """
 
 _HANDLE = re.compile(r"(?:\bu/[A-Za-z0-9_-]+|@[A-Za-z0-9_-]+)")
@@ -958,8 +958,8 @@ def _request_rows_html(store: Store, pages: set[int], *, prefix: str) -> str:
 def _angle_card_html(store: Store, stats_db: str | Path, finding: dict[str, Any], run: dict[str, Any],
                      extra_charts: list[dict[str, Any]] | tuple[()] = ()) -> str:
     # A code-built extra chart is the better form for its finding, so the card shows it in place of the stored chart.
-    chart = next((svg for entry in extra_charts if (svg := _extra_chart(stats_db, entry, run["as_of"], width=320))), "")
-    chart = chart or _chart(stats_db, finding, run["as_of"], width=320, height=190, title=_copy_headline(finding))
+    chart = next((svg for entry in extra_charts if (svg := _extra_chart(stats_db, entry, run["as_of"], width=600))), "")
+    chart = chart or _chart(stats_db, finding, run["as_of"], width=600, height=300, title=_copy_headline(finding))
     evidence_class = "angle-evidence" if chart else "angle-evidence chartless"
     chart_html = f"<div>{chart}</div>" if chart else ""
     audiences = [_TEAM_LABELS.get(str(name), str(name).replace("_", " ")) for name in finding.get("audience") or []]

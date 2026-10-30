@@ -377,7 +377,7 @@ def test_board_cards_stay_short_like_the_mockup(demo_store, tmp_path):
     assert "Bench minutes rose." not in text                           # the full claim is on the finding page
     assert "box_team:Adelaide 36ers" not in text
     width = re.search(r'<svg[^>]*\bwidth="([\d.]+)"', card)              # a compact chart, as before R1 (restored by Claude)
-    assert width and float(width.group(1)) <= 360
+    assert width and float(width.group(1)) <= 640   # widened so board charts are readable (Bart, 2026-10-30)
 
 
 def test_email_has_no_repeated_lead_in_and_counts_angles_in_words(demo_store, tmp_path):

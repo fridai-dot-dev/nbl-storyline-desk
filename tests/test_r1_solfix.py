@@ -286,7 +286,8 @@ def test_item_7_inbox_preview_order_and_follow_up_later_label(tmp_path, stats_db
     assert [row.attrs["data-run-type"] for row in rows] == ["pre_game", "post_game", "supplemental", "follow_up"]
     by_kind = {row.attrs["data-run-type"]: row for row in rows}
     post_preview = one(by_kind["post_game"], cls="preview").text().lstrip("· ")
-    assert post_preview == ns.store.get_finding(ns.finding_ids["top_pick"])["plain_headline"]
+    from storydesk.site import _copy_headline  # statements outside the pre-game email (Bart, 2026-10-30)
+    assert post_preview == _copy_headline(ns.store.get_finding(ns.finding_ids["top_pick"]))
     assert one(by_kind["follow_up"], cls="t").text().strip().lower() == "later"
     follow = one(parse_html((out / "emails" / "follow-up.html").read_text(encoding="utf-8")), cls="mail")
     header = one(follow, cls="head").text()

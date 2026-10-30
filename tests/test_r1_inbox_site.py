@@ -231,14 +231,17 @@ def test_r1_row_13_rendered_copy_comes_from_store_not_site_source(r1_site):
     source = (REPO / "src" / "storydesk" / "site.py").read_text(encoding="utf-8")
     boxes = [box for _page, mail in _email_nodes(out) for box in _story_boxes(mail)]
     assert boxes
-    for box in boxes:
+    from storydesk.site import _copy_headline  # Bart, 2026-10-30: questions in the pre-game email only, statements elsewhere
+    boxes = [(mail, box) for _page, mail in _email_nodes(out) for box in _story_boxes(mail)]
+    for mail, box in boxes:
         stored = ns.store.get_finding(int(box.attrs["data-finding"]))
-        assert one(box, cls="h").text() == stored["plain_headline"]
+        question = mail.attrs.get("data-email-type") == "pre_game"
+        assert one(box, cls="h").text() == (stored["plain_headline"] if question else _copy_headline(stored))
         assert one(box, cls="premise").text() == stored["premise"]
     fixture_by_key = {item["key"]: item for item in ns.payload["findings"]}
     for key in ("test_valid", "top_pick", "supp_story", "follow_story"):
         item = fixture_by_key[key]
-        assert item["plain_headline"] in rendered and item["premise"] in rendered
+        assert item["premise"] in rendered   # the question headline only shows in the pre-game email (Bart, 2026-10-30)
         assert item["plain_headline"] not in source and item["premise"] not in source
 
 

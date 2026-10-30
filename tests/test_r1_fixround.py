@@ -7,6 +7,7 @@ finding implies. Fixtures only: nothing here reads published/ or calls a model.
 from __future__ import annotations
 
 import re
+from storydesk.site import _copy_headline
 import sqlite3
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -244,7 +245,7 @@ def test_f4_subjects_are_built_from_the_stored_tests_and_stories(r1_site):
     assert _subject(_mail(out, "post_game")) == (
         "Subject: Melbourne United 95–97 Adelaide 36ers: 1 of 2 pre-game storylines contradicted")
     supplemental = one(parse_html(_read(out, "emails/supplemental.html")), cls="mail")
-    assert _subject(supplemental) == "Subject: After the press conferences: What did Trevor Gleeson say about Adelaide's bench?"
+    assert _subject(supplemental) == "Subject: After the press conferences: Trevor Gleeson said Adelaide's bench stayed composed after half-time."  # statements outside the pre-game email (Bart, 2026-10-30)
     follow = one(parse_html(_read(out, "emails/follow-up.html")), cls="mail")
     assert _subject(follow) == "Subject: Re: your follow-up: How often had Adelaide overcome a 30-point bench deficit?"
 
@@ -258,7 +259,7 @@ def test_f4_strip_rows_show_the_subject_and_the_designed_muted_preview(r1_site):
         "pre_game": (_subject(_mail(out, "pre_game")), pre_first),
         "post_game": (
             _subject(_mail(out, "post_game")),
-            ns.store.get_finding(ns.finding_ids["top_pick"])["plain_headline"],
+            _copy_headline(ns.store.get_finding(ns.finding_ids["top_pick"])),  # statement outside the pre-game email
         ),
     }
     for kind, filename in (("supplemental", "supplemental.html"), ("follow_up", "follow-up.html")):
@@ -459,7 +460,7 @@ def test_f9_finding_page_stance_actions_are_prefilled_mailto_links(r1_site):
         page = parse_html(_read(out, f"findings/{finding_id}.html"))
         header = one(page, cls="detail-header")
         assert not header.descendants("button")
-        headline = ns.store.get_finding(finding_id)["plain_headline"]
+        headline = _copy_headline(ns.store.get_finding(finding_id))  # finding pages state what was found
         links = [a for a in header.descendants("a") if a.attrs.get("href", "").startswith("mailto:")]
         assert [a.text() for a in links] == ["Push it", "Use if it comes up", "Steer away", "Comment"], key
         for link in links:

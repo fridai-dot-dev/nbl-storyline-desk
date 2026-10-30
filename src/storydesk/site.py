@@ -211,11 +211,14 @@ _BOUNDARY_PHRASE = re.compile(r"since at least \d{4}-\d{2}", re.I)
 
 def _copy_headline(finding: dict[str, Any], *, question: bool = False) -> str:
     # Questions suit the pre-game email only; everywhere else a headline states what the desk found.
-    headline = str((finding.get("plain_headline") if question else None) or headline_for(finding)).strip()
+    headline = str((finding.get("plain_headline") if question else None)
+                   or headline_for({**finding, "plain_headline": None})).strip()
     # Record headlines keep their data boundary even when the copy pass rewrote them.
     source = " ".join(str(finding.get(key) or "") for key in ("headline", "claim"))
     boundary = _BOUNDARY_PHRASE.search(source)
-    if boundary and not _BOUNDARY_PHRASE.search(headline):
+    if boundary and not _BOUNDARY_PHRASE.search(headline) and re.search(r"\bsince \d{4}-\d{2}\b", headline):
+        headline = re.sub(r"\bsince (\d{4}-\d{2})\b", r"since at least \1", headline, count=1)
+    elif boundary and not _BOUNDARY_PHRASE.search(headline):
         stem, mark = (headline[:-1], headline[-1]) if headline[-1:] in "?." else (headline, "")
         headline = f"{stem} ({boundary.group(0)}){mark}"
     return headline
@@ -677,8 +680,8 @@ def _evidence_summary(store: Store, finding_id: int) -> str:
     return "<strong>Evidence:</strong> " + " · ".join(parts)
 
 
-def _stance_links(finding: dict[str, Any]) -> str:
-    headline = _copy_headline(finding)
+def _stance_links(finding: dict[str, Any], *, question: bool = False) -> str:
+    headline = _copy_headline(finding, question=question)
     links = []
     for label, action in (("Push it", "push"), ("Use if it comes up", "use if raised"), ("Steer away", "steer away"), ("Comment", "comment")):
         query = urlencode({"subject": f"{action} on story {finding['id']}: {headline}"})
@@ -719,7 +722,7 @@ def _story_box(store: Store, finding: dict[str, Any], *, prefix: str, chart: str
             f'<b class="h">{escape(_copy_headline(finding, question=question), quote=False)}</b>{tag}'
             f'<p class="premise">{escape(_copy_premise(finding), quote=False)}</p>'
             f'{note}{chart}{after}{records_html}'
-            f'<div class="stance">{unset}{_stance_links(finding)}</div>'
+            f'<div class="stance">{unset}{_stance_links(finding, question=question)}</div>'
             f'<div class="full-story"><a href="{prefix}findings/{finding["id"]}.html">Full story →</a></div></article>')
 
 
@@ -952,8 +955,11 @@ def _request_rows_html(store: Store, pages: set[int], *, prefix: str) -> str:
     return "".join(rows) or '<p class="muted">No follow-up requests yet.</p>'
 
 
-def _angle_card_html(store: Store, stats_db: str | Path, finding: dict[str, Any], run: dict[str, Any]) -> str:
-    chart = _chart(stats_db, finding, run["as_of"], width=320, height=190, title=_copy_headline(finding))
+def _angle_card_html(store: Store, stats_db: str | Path, finding: dict[str, Any], run: dict[str, Any],
+                     extra_charts: list[dict[str, Any]] | tuple[()] = ()) -> str:
+    # A code-built extra chart is the better form for its finding, so the card shows it in place of the stored chart.
+    chart = next((svg for entry in extra_charts if (svg := _extra_chart(stats_db, entry, run["as_of"], width=320))), "")
+    chart = chart or _chart(stats_db, finding, run["as_of"], width=320, height=190, title=_copy_headline(finding))
     evidence_class = "angle-evidence" if chart else "angle-evidence chartless"
     chart_html = f"<div>{chart}</div>" if chart else ""
     audiences = [_TEAM_LABELS.get(str(name), str(name).replace("_", " ")) for name in finding.get("audience") or []]
@@ -1097,8 +1103,8 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
             body = _generic_email(store, run, by_run.get(run["id"], []), subject, when, prefix="../", kind=kind)
             output.append(_write(out / "emails" / filename, title, body, asset_root=out))
 
-    first = lambda stories: _copy_headline(stories[0]) if stories else ""
-    rows = (("pre_game", pre_subject, first(pre_stories), "#pre-game"), ("post_game", post_subject, first([top] if top else post_stories), "#post-game"),
+    first = lambda stories, question=False: _copy_headline(stories[0], question=question) if stories else ""
+    rows = (("pre_game", pre_subject, first(pre_stories, True), "#pre-game"), ("post_game", post_subject, first([top] if top else post_stories), "#post-game"),
             ("supplemental", supplemental_subject, first(supplemental_stories), "emails/supplemental.html"),
             ("follow_up", follow_subject, first(follow_stories), "emails/follow-up.html"))
     inbox_rows = "".join(_inbox_row(times[kind], subject, preview, kind, href if by_type[kind] else None) for kind, subject, preview, href in rows)
@@ -1130,7 +1136,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
         if item.get("kind") == "nothing_found":
             continue
         if is_promotable(store, item["id"]):
-            cards.append(_angle_card_html(store, stats_db, item, run_by_id[item["run_id"]]))
+            cards.append(_angle_card_html(store, stats_db, item, run_by_id[item["run_id"]], extra.get(item["id"], ())))
         else:
             qualifier = "sensitive story" if item.get("sensitivity") in SENSITIVE_CATEGORIES else "story"
             held.append(f'<div><a href="findings/{item["id"]}.html">{escape(_copy_headline(item), quote=False)}</a> · {qualifier} awaiting a stance</div>')

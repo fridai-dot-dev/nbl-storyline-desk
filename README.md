@@ -10,8 +10,8 @@ Both make analysis that normally needs a specialist, or several teams, available
 
 ## Start here
 
-1. **[The night in your inbox](https://fridai-dot-dev.github.io/nbl-storyline-desk/).** These are the pre-game and post-game emails as LK's internal teams would get them, from a real game: NBL27 Round 1, Melbourne United 95–97 Adelaide 36ers.
-2. **[Run it yourself, safely](docs/before-you-run.md).** This covers what the agents can and can't touch, the spend caps, and how to check the code before you give it your Claude account. The commands are [below](#run-it).
+1. **[The night in your inbox](https://fridai-dot-dev.github.io/nbl-storyline-desk/).** These are the pre-game and post-game emails as LK's internal teams would get them, from a real game: NBL27 Round 1, Melbourne United 95–97 Adelaide 36ers. The [board](https://fridai-dot-dev.github.io/nbl-storyline-desk/board.html) behind them is the desk's working view, with every story ranked alongside its evidence and stances.
+2. **[Run it yourself, safely](docs/before-you-run.md).** You can run the offline checks for free, then re-run the desk on the same Round 1 game with your own Claude login or API key, and open the site it builds. The page covers what the agents can and can't touch, the spend caps, and how to check the code before you give it your account. The commands are [below](#run-it).
 3. **[What's rough and what I assumed](docs/whats-rough.md).** It's honest about the gaps, with the [assumptions](docs/assumptions.md) behind them.
 
 **Daniel's Donuts:** the [plan](docs/daniels-donuts/prd.md) and a [sample weekly email](https://fridai-dot-dev.github.io/nbl-storyline-desk/daniels-donuts/weekly.html) (illustrative data). The [code](src/reviewdesk/) builds the real Claude Agent SDK configuration and is checked offline. I'm happy to use this to walk you through how I build, in an interview or a working session.
@@ -58,13 +58,18 @@ That's about US$8 a game. [Cost](docs/cost.md) has the assumptions. [What each r
 | [Proposal](docs/gm-proposal.md) · [Build vs buy](docs/build-vs-buy.md) · [Cost](docs/cost.md) | Leadership | Deciding on a pilot |
 | [Before you run](docs/before-you-run.md) · [What's rough](docs/whats-rough.md) · [Assumptions](docs/assumptions.md) | Anyone running or judging it | Before running it |
 | [PRD](docs/prd.md) · [Data provenance](docs/data-provenance.md) · [Verification](docs/verification.md) | Stakeholders | Checking what it does and where the data comes from |
-| [Architecture](docs/architecture.md) · [Team pitch](docs/team-pitch.md) · [Design](docs/superpowers/specs/2026-10-29-gm-handover-design.md) | Engineers | Reviewing the build |
+| [Architecture](docs/architecture.md) · [Team pitch](docs/team-pitch.md) | Engineers | Reviewing the build |
 | [Build log](docs/build-log.md) · [Review trail](docs/reviews/README.md) | Engineers | Seeing how it was built and reviewed |
 | [Daniel's Donuts plan](docs/daniels-donuts/prd.md) | Leadership, engineers | The same approach for another LK business |
 
 ## Run it
 
-Read [before you run](docs/before-you-run.md) first.
+Read [before you run](docs/before-you-run.md) first. What you get:
+
+- **Offline checks** (free, about 15 minutes): the full test suite, with no model calls and no network.
+- **A live re-run of the Round 1 game** (about 3 minutes and roughly US$2 at API prices for a post-game run): the agents work through the same frozen data, and the site command builds a fresh inbox, board and finding pages from your run in `site/`.
+
+The desk can't yet be pointed at a different game. Collecting the commentary, live chat and articles for another game is still a manual step.
 
 ```bash
 uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
@@ -74,6 +79,6 @@ PYTHONPATH=src .venv/bin/python -m storydesk run post_game --game 36dbeb55-58ad-
 PYTHONPATH=src .venv/bin/python -m storydesk site   # builds site/ from the store
 ```
 
-Live runs need a Claude login or an `ANTHROPIC_API_KEY`. Building the commentary, chat and article corpus for another game is still a manual step ([data provenance](docs/data-provenance.md)).
+Live runs need a Claude login or an `ANTHROPIC_API_KEY`. Each run is capped at US$5, plus US$1 for the judge pass.
 
 Built by Bart Lind, with Claude Code orchestrating and Codex building and reviewing.

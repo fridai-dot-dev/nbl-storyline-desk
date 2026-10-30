@@ -209,8 +209,9 @@ def _first_sentence(value: Any) -> str:
 _BOUNDARY_PHRASE = re.compile(r"since at least \d{4}-\d{2}", re.I)
 
 
-def _copy_headline(finding: dict[str, Any]) -> str:
-    headline = str(finding.get("plain_headline") or headline_for(finding)).strip()
+def _copy_headline(finding: dict[str, Any], *, question: bool = False) -> str:
+    # Questions suit the pre-game email only; everywhere else a headline states what the desk found.
+    headline = str((finding.get("plain_headline") if question else None) or headline_for(finding)).strip()
     # Record headlines keep their data boundary even when the copy pass rewrote them.
     source = " ".join(str(finding.get(key) or "") for key in ("headline", "claim"))
     boundary = _BOUNDARY_PHRASE.search(source)
@@ -705,7 +706,7 @@ def _stance_records(store: Store, finding_id: int, *, empty: bool = True) -> str
     return "".join(records)
 
 
-def _story_box(store: Store, finding: dict[str, Any], *, prefix: str, chart: str = "", test_html: str | None = None, extra: str = "", after: str = "") -> str:
+def _story_box(store: Store, finding: dict[str, Any], *, prefix: str, chart: str = "", test_html: str | None = None, extra: str = "", after: str = "", question: bool = False) -> str:
     """One email story. `test_html` is the already-escaped test or ranking line; without one, the box says how the story is backed."""
     sensitive = finding.get("sensitivity") in SENSITIVE_CATEGORIES
     tag = f' <span class="sensitive-tag">sensitive · {escape(_category(finding), quote=False)}</span>' if sensitive else ""
@@ -715,7 +716,7 @@ def _story_box(store: Store, finding: dict[str, Any], *, prefix: str, chart: str
     records_html = f'<div class="stance-records">{records}</div>' if records else ""
     unset = "No stance yet. " if sensitive and not records else ""
     return (f'<article class="item{" sensitive" if sensitive else ""}" data-finding="{finding["id"]}"{extra}>'
-            f'<b class="h">{escape(_copy_headline(finding), quote=False)}</b>{tag}'
+            f'<b class="h">{escape(_copy_headline(finding, question=question), quote=False)}</b>{tag}'
             f'<p class="premise">{escape(_copy_premise(finding), quote=False)}</p>'
             f'{note}{chart}{after}{records_html}'
             f'<div class="stance">{unset}{_stance_links(finding)}</div>'
@@ -1046,7 +1047,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
 
     pre_when, pre_time = _when(pre, "pre_game", tipoff)
     pre_body = _pre_game_lead(store, pre, pre_stories) + '<section data-section="tests"><h4>What we\'ll test tonight</h4>'
-    pre_body += "".join(_story_box(store, item, prefix="", test_html=_test_line_html(spec) if (spec := _test_spec(item)) else None)
+    pre_body += "".join(_story_box(store, item, prefix="", question=True, test_html=_test_line_html(spec) if (spec := _test_spec(item)) else None)
                         for item in pre_stories) + '</section>'
     if _has_fan_data(store, pre_stories):
         pre_body += '<section data-section="fan-signal"><h4>What fans said after each team\'s last games</h4><p>Stored comments from recent team videos appear here.</p></section>'
@@ -1120,6 +1121,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
                     + '</details><h2>How this was built</h2><p>' + how_built + '</p></section>')
     index = ('<h1>The night in one inbox</h1><section class="inbox" data-region="inbox-strip">' + inbox_rows + '</section>'
              '<p class="internal-note" data-region="internal-note">Everyone on this list is internal. Anyone can set a stance: push it, use it if it comes up, or steer away.</p>'
+             '<p class="board-path" data-region="board-path"><strong>The board</strong> is the desk\'s working view of the night: every story ranked, with its evidence, stances, directives and follow-up questions. <a href="board.html">Open the board →</a></p>'
              '<p class="honesty-note" data-region="honesty-note">' + honesty + '</p><div class="cols">' + pre_mail + post_mail + '</div>' + runs_section)
     output.append(_write(out / "index.html", "The night in one inbox", index, asset_root=out))
 
@@ -1144,7 +1146,6 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
         if directive.get("simulated"):
             details.append("simulated")
         directives.append(f'<div class="directive">{escape(str(directive.get("text") or ""), quote=False)}<br><small>{escape(" · ".join(details), quote=False)}</small></div>')
-    stances = "".join(_stance_records(store, item["id"]) for item in findings if store.stances(item["id"])) or '<p class="muted">No stance yet.</p>'
     if post:
         summary = (f'<div class="board-summary"><strong>What happened</strong><p>{escape(str(post.get("exec_summary") or "No executive summary was recorded for this run."), quote=False)}</p>'
                    f'<details><summary>Editor\'s notes</summary>{_markdown_html(post.get("summary"))}</details></div>')
@@ -1154,7 +1155,7 @@ def build_site(store: Store, stats_db: str | Path, out_dir: str | Path, *, game_
     ask = urlencode({"subject": "Question for the next run"})
     board = ('<h1>Storyline board</h1><p><a href="index.html">Back to the inbox</a></p><section class="board">'
              f'<div class="board-top"><div class="board-score"><strong>{escape(post_score, quote=False)}</strong></div></div>{summary}<div class="board-grid">'
-             '<aside class="board-left"><h2 class="board-label">From the desk</h2>' + stances +
+             '<aside class="board-left">' +
              '<h2 class="board-label">Active directives</h2>' + ("".join(directives) or '<p class="muted">No directives yet.</p>') +
              '</aside><section class="board-angles"><h2 class="board-label">Angles for the internal teams</h2>' + "".join(cards) +
              ('<div class="held-strip">' + "".join(held) + '</div>' if held else '') +

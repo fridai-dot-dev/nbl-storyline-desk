@@ -54,7 +54,7 @@ def test_board_has_the_mockups_three_columns(demo_store, tmp_path):
     board_at = _pos(board, "board")
     left, angles, right = (_pos(board, name) for name in ("board-left", "board-angles", "board-right"))
     assert -1 < board_at < left < angles < right, "the board, then its left, angles and right columns, in that order"
-    assert "From the desk" in board[left:angles] and "Active directives" in board[left:angles]
+    assert "Active directives" in board[left:angles] and "From the desk" not in board  # unattributed stance list removed (Bart, 2026-10-30)
     assert "Angles for" in board[angles:right]
     assert "Ask the next run" in board[right:]
 
@@ -95,12 +95,14 @@ def test_angles_are_ranked_and_open_after_the_game(demo_store, tmp_path):
     assert demo_store.pre_finding in cards
 
 
-def test_board_left_column_shows_shared_stances(demo_store, tmp_path):
+def test_board_stances_sit_on_their_own_story_card(demo_store, tmp_path):
+    # Bart, 2026-10-30: stances show on the card they belong to, never as an unattributed sidebar list.
     demo_store.store.set_stance(demo_store.f_checked, "League CEO", "push", "Lead with this", simulated=True)
-    left, _, _ = _columns(_read(_build(demo_store, tmp_path), "board.html"))
-    assert "Lead with this" in left and "League CEO: push" in left
-    assert "simulated" in left.lower()
-    assert "No directives yet" in left
+    board = _read(_build(demo_store, tmp_path), "board.html")
+    left, _, _ = _columns(board)
+    assert "League CEO: push" not in left and "No directives yet" in left
+    cards = _angle_cards(board)
+    assert "League CEO: push" in cards[demo_store.f_checked]["body"] and "simulated" in cards[demo_store.f_checked]["body"].lower()
 
 
 def test_active_directives_show_owner_expiry_and_the_simulated_label(demo_store, tmp_path):
